@@ -43,12 +43,16 @@
 
     var isMobile = window.matchMedia("(max-width: 760px)").matches;
 
-    // ---------------- Hero: pinned, three planes ----------------
+    // ---------------- Hero: pinned planes (image, headline, darken) ----------------
+    // A foreground spiral plane used to live here too; removed at the
+    // user's request (it kept colliding with either the headline or the
+    // hero-cta buttons depending on viewport width). The image and
+    // headline planes, and the darken bridge into the next section, are
+    // unchanged.
     var heroSpacer = document.getElementById("hero-pin-spacer");
     var hero = document.getElementById("hero");
     var heroImage = hero && hero.querySelector(".hero-media img");
     var heroInner = hero && hero.querySelector(".hero-inner");
-    var heroFg = document.getElementById("hero-fg");
     var heroDarken = document.getElementById("hero-darken");
 
     if (heroSpacer && hero) {
@@ -64,12 +68,6 @@
           if (heroInner) {
             heroInner.style.transform = "translateY(" + (-p * 64) + "px)";
             heroInner.style.opacity = String(Math.max(0, 1 - p * 1.15));
-          }
-          if (heroFg) {
-            heroFg.style.transform = "translateY(" + (-p * 150) + "px)";
-            // Starts faint (resting opacity ~0.15, set in CSS) and gains
-            // presence as the hero scrolls away, rather than fading out.
-            heroFg.style.opacity = String(0.15 + p * 0.35);
           }
           if (heroDarken) heroDarken.style.opacity = String(Math.min(1, p * 1.15));
         },
@@ -160,6 +158,48 @@
           if (testVisual) {
             testVisual.style.transform = "rotate(" + (p * 50) + "deg)";
           }
+        },
+      });
+    }
+
+    // ---------------- Science section: overlapping photos entrance ----------------
+    // Not pinned. Scrubbed over the section scrolling into view: the main
+    // frame wipes open (clip-path inset) while its inner img settles from a
+    // slight zoom (parallax depth); the inset photo arrives a beat later
+    // from an offset with its own settle + fade, then keeps drifting a
+    // little further (counter-parallax) as the section continues past.
+    var scienceMedia = document.getElementById("science-media");
+    var scienceMainFrame = document.getElementById("science-main-frame");
+    var scienceMainImg = document.getElementById("science-main-img");
+    var scienceInsetImg = document.getElementById("science-inset-img");
+
+    if (scienceMedia && scienceMainFrame && scienceMainImg && scienceInsetImg) {
+      var clipMax = isMobile ? 8 : 12;
+      var insetXOffset = isMobile ? -16 : -30;
+      var insetYOffset = isMobile ? 34 : 60;
+      var insetDrift = isMobile ? -10 : -20;
+
+      ScrollTrigger.create({
+        trigger: scienceMedia,
+        start: "top 85%",
+        end: isMobile ? "center 65%" : "center 55%",
+        scrub: true,
+        onUpdate: function (self) {
+          var p = self.progress;
+
+          var clip = clipMax * (1 - p);
+          scienceMainFrame.style.clipPath =
+            "inset(" + clip + "% " + clip + "% " + clip + "% " + clip + "%)";
+          scienceMainImg.style.transform = "scale(" + (1.15 - 0.15 * p) + ")";
+
+          // Inset photo: arrives late (p 0.2 to 0.8), then a small
+          // continued upward drift through the tail of the range (p 0.8-1).
+          var ip = Math.min(1, Math.max(0, (p - 0.2) / 0.6));
+          var tail = Math.min(1, Math.max(0, (p - 0.8) / 0.2));
+          scienceInsetImg.style.opacity = String(ip);
+          var ty = insetYOffset * (1 - ip) + insetDrift * tail;
+          var tx = insetXOffset * (1 - ip);
+          scienceInsetImg.style.transform = "translate(" + tx + "px, " + ty + "px)";
         },
       });
     }

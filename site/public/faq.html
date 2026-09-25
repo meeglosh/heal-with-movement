@@ -47,20 +47,16 @@
         <li><a href="/faq.html" aria-current="page">FAQ</a></li>
         <li><a href="/contact.html">Contact</a></li>
         <li class="nav-mobile-only">
-          <div class="lang-toggle" role="group" aria-label="Language">
-            <button type="button" data-lang="en" aria-pressed="true">EN</button>
-            <button type="button" data-lang="fr" aria-pressed="false">FR</button>
-          </div>
+          <!-- EN/FR language toggle removed from view per request; the i18n
+               scaffold (main.js data-lang handler, .lang-toggle CSS) is kept
+               in the codebase, unreferenced, to re-enable later. See
+               PLACEHOLDERS.md. -->
           <a class="btn btn-ghost btn-small" href="/intake.html">Child Intake</a>
           <a class="btn btn-primary btn-small" href="/book.html">Book a Session</a>
         </li>
       </ul>
     </nav>
     <div class="nav-actions">
-      <div class="lang-toggle" role="group" aria-label="Language">
-        <button type="button" data-lang="en" aria-pressed="true">EN</button>
-        <button type="button" data-lang="fr" aria-pressed="false">FR</button>
-      </div>
       <a class="btn btn-primary btn-small" href="/book.html">Book a Session</a>
     </div>
     <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">

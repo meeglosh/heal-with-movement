@@ -149,30 +149,22 @@ p{margin:0 0 1.1em; overflow-wrap:break-word}
 /* --- scroll-craft: pinned hero with independent planes ---
    .hero-pin-spacer gives the pin its scroll distance. Inside, .hero itself
    is pinned by ScrollTrigger (position:fixed applied by the library) while
-   three planes move at different rates as the visitor scrolls out of it:
-   the video (scales up slowly), the headline (.hero-inner, drifts up a
-   little faster than the video), and a soft foreground light-leak/spiral
-   plane (.hero-fg, drifts fastest, on top). All motion is transform/opacity
-   only. Fully inert (no pin, no motion) under prefers-reduced-motion or
-   when JS/ScrollTrigger fails to load; the plain static hero above degrades
-   to that automatically since these rules only apply once JS adds
-   .js-hero-pinned to <html>. */
+   two planes move at different rates as the visitor scrolls out of it: the
+   photo (scales up slowly) and the headline (.hero-inner, drifts up a
+   little faster). A third, full-bleed darken plane bridges into the next
+   section. (A foreground spiral plane was tried here and removed — it kept
+   colliding with either the headline or the hero-cta buttons at various
+   widths.) All motion is transform/opacity only. Fully inert (no pin, no
+   motion) under prefers-reduced-motion or when JS/ScrollTrigger fails to
+   load; the plain static hero above degrades to that automatically since
+   these rules only apply once JS adds .js-hero-pinned to <html>. */
 .hero-pin-spacer{position:relative}
-/* Framed bottom-right, sized well under the full hero so it sits beside/
-   around the hands in the footage rather than crossing the headline or
-   covering the subject. Starts faint (resting opacity set in JS, ~0.15) and
-   gains presence as the hero scrolls away. */
-.hero-fg{position:absolute; right:2%; bottom:6%; width:min(34vw,380px); height:min(34vw,380px); z-index:4; pointer-events:none; opacity:.15; mix-blend-mode:screen}
-.hero-fg svg{width:100%; height:100%}
 /* A soft full-bleed plum wash that ramps to fully opaque near the end of the
    hero's pin, bridging the video into the dark .signature section right
    after it so the transition reads as one continuous darkening rather than
    a hard cut. Opacity is driven directly by scroll progress in JS. */
 .hero-darken{position:absolute; inset:0; z-index:2; background:var(--c-dark-canvas); opacity:0; pointer-events:none}
 .js-hero-pinned .hero-media img{will-change:transform}
-@media (prefers-reduced-motion: reduce){
-  .hero-fg{display:none}
-}
 
 /* --- scroll-craft: signature sequence (the spiral draws itself) ---
    Pinned section. An SVG spiral path strokes in as stroke-dashoffset is
@@ -270,9 +262,14 @@ p{margin:0 0 1.1em; overflow-wrap:break-word}
 
 /* signature move: "settle" reveal — elements arrive with a soft downward settle + tiny scale, like a body relaxing into stillness */
 .settle{opacity:0; transform:translateY(22px) scale(.99); transition:opacity .9s var(--ease), transform .9s var(--ease)}
+/* Benefit card icons: hand-drawn, one stroke family (see BENEFIT_ICONS in
+   build.mjs). Fade/scale in a beat after the card itself settles. */
+.benefit-icon{display:block; margin-bottom:20px; opacity:0; transform:scale(.85); transition:opacity .7s var(--ease) .15s, transform .7s var(--ease) .15s}
+.settle.is-visible .benefit-icon{opacity:1; transform:scale(1)}
 .settle.is-visible{opacity:1; transform:translateY(0) scale(1)}
 @media (prefers-reduced-motion: reduce){
   .settle{opacity:1; transform:none; transition:none}
+  .benefit-icon{opacity:1; transform:none; transition:none}
 }
 
 /* breath cue: a barely-perceptible scale pulse used ONCE per page on the primary CTA, echoing the slow breathing pace of an ABM lesson */
@@ -280,14 +277,22 @@ p{margin:0 0 1.1em; overflow-wrap:break-word}
 @keyframes breathe{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.035)} }
 @media (prefers-reduced-motion: reduce){ .breathe{animation:none} }
 
-/* asymmetric / overlapping media composition */
+/* asymmetric / overlapping media composition
+   Scroll-scrubbed entrance (see js/scroll-craft.js), not pinned: the main
+   frame wipes open via clip-path while its inner img settles from a slight
+   zoom (parallax depth), and the inset photo arrives a beat later from an
+   offset with its own gentle settle + counter-parallax as the section
+   scrolls past. Base markup renders fully visible/unclipped by default
+   (progressive enhancement — inline styles only appear once JS runs), so
+   reduced-motion and no-JS both simply show the finished composition. */
 .media-overlap{position:relative; max-width:100%}
-.media-overlap img{border-radius:2px}
-.media-overlap .media-main{width:82%; margin-left:auto}
+.media-overlap img{border-radius:2px; display:block}
+.media-main-frame{width:82%; margin-left:auto; overflow:hidden; border-radius:2px}
+.media-main-frame .media-main{width:100%}
 .media-overlap .media-inset{position:absolute; left:0; bottom:-8%; width:46%; border:8px solid var(--c-canvas); box-shadow:0 24px 48px -20px rgba(20,14,6,.35)}
 @media(max-width:760px){
   .media-overlap{margin-top:20px}
-  .media-overlap .media-main{width:100%; margin-left:0}
+  .media-main-frame{width:100%; margin-left:0}
   .media-overlap .media-inset{width:52%; left:-4%; bottom:-10%; border-width:6px}
 }
 

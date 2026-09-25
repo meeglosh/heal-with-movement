@@ -88,20 +88,16 @@ function header(active) {
       <ul class="nav-links" id="nav-links">
         ${links}
         <li class="nav-mobile-only">
-          <div class="lang-toggle" role="group" aria-label="Language">
-            <button type="button" data-lang="en" aria-pressed="true">EN</button>
-            <button type="button" data-lang="fr" aria-pressed="false">FR</button>
-          </div>
+          <!-- EN/FR language toggle removed from view per request; the i18n
+               scaffold (main.js data-lang handler, .lang-toggle CSS) is kept
+               in the codebase, unreferenced, to re-enable later. See
+               PLACEHOLDERS.md. -->
           <a class="btn btn-ghost btn-small" href="/intake.html">Child Intake</a>
           <a class="btn btn-primary btn-small" href="/book.html">Book a Session</a>
         </li>
       </ul>
     </nav>
     <div class="nav-actions">
-      <div class="lang-toggle" role="group" aria-label="Language">
-        <button type="button" data-lang="en" aria-pressed="true">EN</button>
-        <button type="button" data-lang="fr" aria-pressed="false">FR</button>
-      </div>
       <a class="btn btn-primary btn-small" href="/book.html">Book a Session</a>
     </div>
     <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
@@ -219,10 +215,7 @@ function heroSection({ eyebrow, h1, sub, ctas, pinned = false }) {
   </div>
   <div class="hero-grade" aria-hidden="true"></div>
   <div class="hero-scrim"></div>
-  ${pinned ? `<div class="hero-darken" id="hero-darken" aria-hidden="true"></div>
-  <div class="hero-fg" id="hero-fg" aria-hidden="true">
-    <svg viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet"><path d="${SPIRAL_PATH}" fill="none" stroke="#F3ECF5" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 4) scale(0.9)"/></svg>
-  </div>` : ""}
+  ${pinned ? `<div class="hero-darken" id="hero-darken" aria-hidden="true"></div>` : ""}
   <div class="wrap hero-inner">
     <p class="eyebrow">${eyebrow}</p>
     <h1>${h1}</h1>
@@ -256,6 +249,79 @@ function signatureSequence() {
   </section>
 </div>`;
 }
+
+// Hand-drawn benefit icons, one stroke family so they read as one set:
+// 1.25px stroke, round caps/joins, no fill, brand accent color. Each is a
+// simple open gesture rather than a stock icon-font glyph.
+// All icons: 64x64 viewBox, rendered at 64px (up from an earlier, too-small
+// 52px pass), 1.25px stroke with vector-effect:non-scaling-stroke so the
+// line stays thin regardless of any future scaling, round caps/joins, no
+// fill, --c-accent. Geometry is drawn to use most of the 64x64 box (roughly
+// the 8-56 range on each axis) rather than sitting small in one corner.
+const ICON_ATTRS = `fill="none" stroke="var(--c-accent)" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"`;
+
+const BENEFIT_ICONS = {
+  // Freedom from pain: a joint opening into a soft, unforced arc, with a
+  // small gap at the base rather than a closed loop, "release" rather than
+  // "connection."
+  freedom: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M12 50 C12 30, 21 14, 33 14 C46 14, 54 24, 51 36" ${ICON_ATTRS}/>
+    <path d="M42 26 L51 36 L42 43" ${ICON_ATTRS}/>
+  </svg>`,
+  // Stress/sleep: a crescent moon over one slow, settling wave line.
+  sleep: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M38 9 C27 9, 18 18, 18 30 C18 42, 27 51, 38 51 C30 47, 24 40, 24 30 C24 20, 30 13, 38 9 Z" ${ICON_ATTRS}/>
+    <path d="M8 55 C13 50, 18 50, 23 55 C28 60, 33 60, 38 55 C43 50, 48 50, 53 55" ${ICON_ATTRS}/>
+  </svg>`,
+  // Mobility/brain: a neural spiral, the same family as the brand mark but
+  // drawn as its own simpler gesture, not a literal reuse.
+  mobility: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M35 55 C21 55, 11 45, 11 32 C11 19, 21 9, 33 9 C44 9, 53 17, 53 28 C53 37, 46 43, 39 43 C33 43, 28 39, 28 32 C28 27, 32 23, 37 23" ${ICON_ATTRS}/>
+  </svg>`,
+};
+
+// Same stroke family as BENEFIT_ICONS, one bespoke icon per "who benefits"
+// card on the ABM page. None reuse a home-page icon; each is drawn for its
+// own subject.
+const ABM_ICONS = {
+  // Stroke / brain trauma recovery: an open head profile with a small
+  // reconnecting spark inside, new pathways forming.
+  brain: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M20 47 C10 42, 7 30, 12 21 C17 11, 30 8, 39 13 C48 18, 50 28, 45 37 C42 42, 37 46, 30 46" ${ICON_ATTRS}/>
+    <path d="M24 24 L31 29 L25 34 L33 40" ${ICON_ATTRS}/>
+  </svg>`,
+  // Children with special needs: a small hand cradled inside a larger,
+  // open, cupped curve.
+  child: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M8 28 C8 41, 18 50, 32 50 C46 50, 56 41, 56 28" ${ICON_ATTRS}/>
+    <path d="M23 27 C23 21, 27 17, 32 17 C37 17, 41 21, 41 27" ${ICON_ATTRS}/>
+  </svg>`,
+  // Chronic conditions (Parkinson's, MS): a steady, rooted upright form,
+  // settled rather than rigid.
+  rooted: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M32 8 C29 8, 27 10.5, 27 13.5 C27 16.5, 29 19, 32 19 C35 19, 37 16.5, 37 13.5 C37 10.5, 35 8, 32 8 Z" ${ICON_ATTRS}/>
+    <path d="M32 19 L32 43" ${ICON_ATTRS}/>
+    <path d="M13 50 C19 44, 25 50, 32 45 C39 50, 45 44, 51 50" ${ICON_ATTRS}/>
+  </svg>`,
+  // High performers (musicians, dancers, athletes): one flowing arc in
+  // motion with two motion ticks trailing it, a leap or a held note.
+  flow: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M9 54 C18 40, 27 24, 44 12" ${ICON_ATTRS}/>
+    <path d="M36 20 C40 17, 44 17, 47 20" ${ICON_ATTRS}/>
+    <path d="M42 12 C45 10, 48 10, 50 12" ${ICON_ATTRS}/>
+  </svg>`,
+  // Back, neck and joint pain: a gentle, easing S-curve spine, drawn wide
+  // rather than a narrow squiggle.
+  spine: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M38 8 C22 14, 34 22, 36 28 C38 34, 20 38, 26 46 C29 50, 38 52, 34 58" ${ICON_ATTRS}/>
+  </svg>`,
+  // Movement limitations / vitality: two radiating, concentric quarter-arc
+  // ripples, increasing ease reaching further out.
+  vitality: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M30 56 A18 18 0 0 1 12 38" ${ICON_ATTRS}/>
+    <path d="M54 56 A42 42 0 0 1 12 14" ${ICON_ATTRS}/>
+  </svg>`,
+};
 
 function quote(text, attr) {
   return `<blockquote class="quote-card settle"><q>${text}</q><p class="quote-attr">${attr}</p></blockquote>`;
@@ -339,14 +405,17 @@ ${heroSection({
   <div class="wrap">
     <div class="grid grid-3">
       <div class="card settle">
+        ${BENEFIT_ICONS.freedom}
         <h3>Freedom from Pain &amp; Injury</h3>
         <p>Slow, small, varied movements help the nervous system find new, easier ways to move, often where pushing harder hasn't worked.</p>
       </div>
       <div class="card settle">
+        ${BENEFIT_ICONS.sleep}
         <h3>Reduce Stress &amp; Improve Sleep</h3>
         <p>Sessions are unhurried by design. Many clients notice a calmer nervous system and deeper sleep after just a few lessons.</p>
       </div>
       <div class="card settle">
+        ${BENEFIT_ICONS.mobility}
         <h3>Increase Mobility &amp; Better Brain Function</h3>
         <p>Because movement and the brain are inseparable, this work supports clearer thinking alongside greater ease of motion.</p>
       </div>
@@ -364,9 +433,11 @@ ${signatureSequence()}
       <p>Based on the Feldenkrais Method, the Anat Baniel Method NeuroMovement (ABMNM) uses movement and touch to upgrade brain function, leading to improved thinking, reduced pain, and better stress management. Neuroplasticity means this capacity to grow and improve is available at any age.</p>
       <a class="btn btn-ghost" href="/abm.html">Learn how ABM works</a>
     </div>
-    <div class="media-overlap settle">
-      <img class="media-main" src="/assets/img/fuu-j-r2nJPbEYuSQ-unsplash.jpg" alt="A moment of openness and ease, arms outstretched in warm light" loading="lazy">
-      <img class="media-inset" src="/assets/img/haley-phelps-S-llxYh3GzI-unsplash.jpg" alt="Floating calmly in still water" loading="lazy">
+    <div class="media-overlap" id="science-media">
+      <div class="media-main-frame" id="science-main-frame">
+        <img class="media-main" id="science-main-img" src="/assets/img/fuu-j-r2nJPbEYuSQ-unsplash.jpg" alt="A moment of openness and ease, arms outstretched in warm light" loading="lazy">
+      </div>
+      <img class="media-inset" id="science-inset-img" src="/assets/img/haley-phelps-S-llxYh3GzI-unsplash.jpg" alt="Floating calmly in still water" loading="lazy">
     </div>
   </div>
 </section>
@@ -498,12 +569,12 @@ const abm = page({
   <div class="wrap">
     <h2>Who benefits from this practice</h2>
     <div class="grid grid-3" style="margin-top:1.5em;">
-      <div class="card settle">People recovering from stroke or brain trauma</div>
-      <div class="card settle">Children with developmental disabilities and special needs</div>
-      <div class="card settle">People with chronic conditions such as Parkinson's and multiple sclerosis</div>
-      <div class="card settle">High performers, musicians, dancers, athletes</div>
-      <div class="card settle">People with back, neck, and joint pain</div>
-      <div class="card settle">People with movement limitations, or anyone seeking increased vitality and cognitive function</div>
+      <div class="card settle">${ABM_ICONS.brain}<p>People recovering from stroke or brain trauma</p></div>
+      <div class="card settle">${ABM_ICONS.child}<p>Children with developmental disabilities and special needs</p></div>
+      <div class="card settle">${ABM_ICONS.rooted}<p>People with chronic conditions such as Parkinson's and multiple sclerosis</p></div>
+      <div class="card settle">${ABM_ICONS.flow}<p>High performers, musicians, dancers, athletes</p></div>
+      <div class="card settle">${ABM_ICONS.spine}<p>People with back, neck, and joint pain</p></div>
+      <div class="card settle">${ABM_ICONS.vitality}<p>People with movement limitations, or anyone seeking increased vitality and cognitive function</p></div>
     </div>
   </div>
 </section>

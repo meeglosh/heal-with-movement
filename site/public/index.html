@@ -67,20 +67,16 @@
         <li><a href="/faq.html">FAQ</a></li>
         <li><a href="/contact.html">Contact</a></li>
         <li class="nav-mobile-only">
-          <div class="lang-toggle" role="group" aria-label="Language">
-            <button type="button" data-lang="en" aria-pressed="true">EN</button>
-            <button type="button" data-lang="fr" aria-pressed="false">FR</button>
-          </div>
+          <!-- EN/FR language toggle removed from view per request; the i18n
+               scaffold (main.js data-lang handler, .lang-toggle CSS) is kept
+               in the codebase, unreferenced, to re-enable later. See
+               PLACEHOLDERS.md. -->
           <a class="btn btn-ghost btn-small" href="/intake.html">Child Intake</a>
           <a class="btn btn-primary btn-small" href="/book.html">Book a Session</a>
         </li>
       </ul>
     </nav>
     <div class="nav-actions">
-      <div class="lang-toggle" role="group" aria-label="Language">
-        <button type="button" data-lang="en" aria-pressed="true">EN</button>
-        <button type="button" data-lang="fr" aria-pressed="false">FR</button>
-      </div>
       <a class="btn btn-primary btn-small" href="/book.html">Book a Session</a>
     </div>
     <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
@@ -102,9 +98,6 @@
   <div class="hero-grade" aria-hidden="true"></div>
   <div class="hero-scrim"></div>
   <div class="hero-darken" id="hero-darken" aria-hidden="true"></div>
-  <div class="hero-fg" id="hero-fg" aria-hidden="true">
-    <svg viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet"><path d="M8 40 C 8 24, 22 12, 34 12 C 48 12, 56 22, 56 32 C 56 40, 50 45, 43 45 C 37 45, 33 41, 33 36 C 33 32, 36 29, 40 29" fill="none" stroke="#F3ECF5" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 4) scale(0.9)"/></svg>
-  </div>
   <div class="wrap hero-inner">
     <p class="eyebrow">Heal with Movement · Heidi Rood</p>
     <h1>Freedom from pain, through your body's own <em>intelligence</em>.</h1>
@@ -118,14 +111,25 @@
   <div class="wrap">
     <div class="grid grid-3">
       <div class="card settle">
+        <svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M12 50 C12 30, 21 14, 33 14 C46 14, 54 24, 51 36" fill="none" stroke="var(--c-accent)" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    <path d="M42 26 L51 36 L42 43" fill="none" stroke="var(--c-accent)" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+  </svg>
         <h3>Freedom from Pain &amp; Injury</h3>
         <p>Slow, small, varied movements help the nervous system find new, easier ways to move, often where pushing harder hasn't worked.</p>
       </div>
       <div class="card settle">
+        <svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M38 9 C27 9, 18 18, 18 30 C18 42, 27 51, 38 51 C30 47, 24 40, 24 30 C24 20, 30 13, 38 9 Z" fill="none" stroke="var(--c-accent)" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    <path d="M8 55 C13 50, 18 50, 23 55 C28 60, 33 60, 38 55 C43 50, 48 50, 53 55" fill="none" stroke="var(--c-accent)" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+  </svg>
         <h3>Reduce Stress &amp; Improve Sleep</h3>
         <p>Sessions are unhurried by design. Many clients notice a calmer nervous system and deeper sleep after just a few lessons.</p>
       </div>
       <div class="card settle">
+        <svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+    <path d="M35 55 C21 55, 11 45, 11 32 C11 19, 21 9, 33 9 C44 9, 53 17, 53 28 C53 37, 46 43, 39 43 C33 43, 28 39, 28 32 C28 27, 32 23, 37 23" fill="none" stroke="var(--c-accent)" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+  </svg>
         <h3>Increase Mobility &amp; Better Brain Function</h3>
         <p>Because movement and the brain are inseparable, this work supports clearer thinking alongside greater ease of motion.</p>
       </div>
@@ -155,9 +159,11 @@
       <p>Based on the Feldenkrais Method, the Anat Baniel Method NeuroMovement (ABMNM) uses movement and touch to upgrade brain function, leading to improved thinking, reduced pain, and better stress management. Neuroplasticity means this capacity to grow and improve is available at any age.</p>
       <a class="btn btn-ghost" href="/abm.html">Learn how ABM works</a>
     </div>
-    <div class="media-overlap settle">
-      <img class="media-main" src="/assets/img/fuu-j-r2nJPbEYuSQ-unsplash.jpg" alt="A moment of openness and ease, arms outstretched in warm light" loading="lazy">
-      <img class="media-inset" src="/assets/img/haley-phelps-S-llxYh3GzI-unsplash.jpg" alt="Floating calmly in still water" loading="lazy">
+    <div class="media-overlap" id="science-media">
+      <div class="media-main-frame" id="science-main-frame">
+        <img class="media-main" id="science-main-img" src="/assets/img/fuu-j-r2nJPbEYuSQ-unsplash.jpg" alt="A moment of openness and ease, arms outstretched in warm light" loading="lazy">
+      </div>
+      <img class="media-inset" id="science-inset-img" src="/assets/img/haley-phelps-S-llxYh3GzI-unsplash.jpg" alt="Floating calmly in still water" loading="lazy">
     </div>
   </div>
 </section>
