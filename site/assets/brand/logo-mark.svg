@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="hwmMarkTitle">
+  <title id="hwmMarkTitle">Heal with Movement mark</title>
+  <!-- Minimal continuous-line mark: one open, unbroken curve suggesting a gentle
+       guided movement (a hand's slow arc cradling a smaller, following curve).
+       Reads clearly down to 16px: single stroke, rounded caps, no fine detail. -->
+  <path d="M8 40
+           C 8 24, 22 12, 34 12
+           C 48 12, 56 22, 56 32
+           C 56 40, 50 45, 43 45
+           C 37 45, 33 41, 33 36
+           C 33 32, 36 29, 40 29"
+        fill="none" stroke="#3D2447" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="40" cy="29" r="3.4" fill="#7C5A94"/>
+</svg>

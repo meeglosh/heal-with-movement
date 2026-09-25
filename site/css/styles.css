@@ -1,0 +1,373 @@
+/* Heal with Movement — design tokens & base styles.
+   Brand default is ALWAYS LIGHT. We intentionally do not follow the OS
+   prefers-color-scheme — a warm, editorial wellness brand should not flip
+   to a different palette just because a visitor's OS is in dark mode. A
+   manual [data-theme="dark"] block is kept below for a possible future
+   toggle, but nothing switches it automatically today. */
+:root{
+  /* Sophisticated wellness purple: deep aubergine/plum ink, dusty lilac
+     tints, a warm-lilac off-white canvas, muted gold used sparingly as the
+     one accent that isn't purple. */
+  --c-canvas:#F7F2F9;
+  --c-canvas-alt:#ECE0F1;
+  --c-surface:#FFFFFF;
+  --c-ink:#2E1F36;
+  --c-ink-soft:#6B5876;
+  --c-line:#DECEE3;
+  --c-accent:#7C5A94;      /* dusty plum-lavender */
+  --c-accent-soft:#B39BC4; /* lilac tint */
+  --c-accent-deep:#3D2447; /* deep plum, near-ink */
+  --c-gold:#B08A3E;        /* muted warm gold, sparing accent only */
+  --c-focus:#7A5A18;
+  --c-btn-ink:#3D2447;     /* button/CTA color — deliberately NOT theme-swapped */
+  --c-btn-text:#FFFFFF;
+  --c-dark-canvas:#1E1522; /* deep aubergine-black, used for hero scrim + footer */
+  --c-dark-ink:#F3ECF5;
+  --c-dark-gold:#D8B96A;
+  --radius:2px;
+  --font-display:"Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-text:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --maxw:1280px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+/* Manual dark variant only — never auto-applied. */
+:root[data-theme="dark"]{
+  --c-canvas:#1E1522; --c-canvas-alt:#251A2A; --c-surface:#2A1E30;
+  --c-ink:#F3ECF5; --c-ink-soft:#CDBED4; --c-line:#3F2E47;
+  --c-accent:#D8B96A; --c-accent-soft:#B39BC4; --c-accent-deep:#F3ECF5;
+  --c-btn-ink:#D8B96A; --c-btn-text:#241A0F;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+html, body{ overflow-x:hidden; max-width:100%; }
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{
+  margin:0; background:var(--c-canvas); color:var(--c-ink);
+  font-family:var(--font-text); font-size:17px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  color-scheme: light; /* stop the UA from tinting form controls/scrollbars dark */
+}
+img,video{max-width:100%; display:block}
+a{color:inherit}
+/* Fraunces variable axes: SOFT rounds the terminals (used throughout for a
+   gentler, less severe serif, in keeping with a wellness brand), WONK lets
+   the light weights show their more characterful, slightly irregular
+   letterforms. WONK is reserved for the hero h1 and the signature-sequence
+   statements (see .hero h1, .signature-stage h3 below) rather than applied
+   globally, so it reads as a considered accent, not a default. */
+h1,h2,h3,h4{font-family:var(--font-display); line-height:1.1; margin:0 0 .5em; font-variation-settings:"SOFT" 100, "WONK" 0}
+h1{font-size:clamp(2.6rem,7vw,5.6rem); font-weight:300; letter-spacing:-.005em}
+h2{font-size:clamp(1.9rem,4vw,3.2rem); font-weight:375; letter-spacing:-.005em}
+h3{font-size:clamp(1.3rem,2vw,1.7rem); font-weight:475}
+h4{font-size:1.05rem; font-weight:500}
+.hero h1, .signature-stage h3{font-variation-settings:"SOFT" 100, "WONK" 1}
+h1 em, .signature-stage h3 em{font-style:italic; font-weight:300}
+p{margin:0 0 1.1em; overflow-wrap:break-word}
+.eyebrow{font-family:var(--font-text); text-transform:uppercase; letter-spacing:.14em; font-size:.76rem; color:var(--c-accent-deep); font-weight:700}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:0 clamp(20px,5vw,64px)}
+.section{padding:clamp(64px,10vw,140px) 0}
+.section-tight{padding:clamp(40px,6vw,72px) 0}
+.alt{background:var(--c-canvas-alt)}
+.surface{background:var(--c-surface)}
+.lede{font-size:clamp(1.1rem,1.6vw,1.35rem); color:var(--c-ink-soft); max-width:56ch}
+
+/* skip link */
+.skip-link{position:absolute; left:-999px; top:0; background:var(--c-ink); color:var(--c-canvas); padding:.8em 1.2em; z-index:200}
+.skip-link:focus{left:12px; top:12px}
+
+/* focus */
+:focus-visible{outline:3px solid var(--c-focus); outline-offset:3px}
+
+/* header */
+/* Note: intentionally no backdrop-filter here. A filter/backdrop-filter on
+   this element would create a new containing block for its position:fixed
+   descendants (the mobile nav panel), trapping that panel inside the
+   header's own small box instead of covering the viewport. */
+.site-header{position:sticky; top:0; z-index:100; background:var(--c-canvas); border-bottom:1px solid var(--c-line)}
+.site-header .wrap{display:flex; align-items:center; justify-content:space-between; padding-top:14px; padding-bottom:14px; gap:20px}
+.brand{display:flex; align-items:center; gap:10px; text-decoration:none; flex:0 0 auto}
+.brand img{height:30px; width:auto}
+.nav-links{display:flex; align-items:center; gap:22px; list-style:none; margin:0; padding:0; flex:1 1 auto; justify-content:center}
+.nav-links > li{white-space:nowrap}
+.nav-links a{text-decoration:none; font-size:.93rem; font-weight:500; color:var(--c-ink-soft); transition:color .2s var(--ease); white-space:nowrap}
+.nav-links a:hover, .nav-links a[aria-current="page"]{color:var(--c-ink)}
+.nav-actions{display:flex; align-items:center; gap:12px; flex:0 0 auto}
+.nav-actions .lang-toggle{flex:0 0 auto}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:.5em; padding:.85em 1.5em; border-radius:var(--radius); text-decoration:none; font-weight:600; font-size:.92rem; border:1px solid transparent; cursor:pointer; transition:transform .25s var(--ease), background .25s var(--ease), border-color .25s var(--ease); font-family:var(--font-text); white-space:nowrap}
+.btn-primary{background:var(--c-btn-ink); color:var(--c-btn-text)}
+.btn-primary:hover{transform:translateY(-2px); background:var(--c-accent)}
+.btn-ghost{background:transparent; border-color:var(--c-line); color:var(--c-ink)}
+.btn-ghost:hover{border-color:var(--c-accent); transform:translateY(-2px)}
+.btn-small{padding:.6em 1.1em; font-size:.82rem}
+.lang-toggle{display:flex; border:1px solid var(--c-line); border-radius:var(--radius); overflow:hidden}
+.lang-toggle button{background:transparent; border:0; padding:.4em .65em; font-size:.76rem; font-weight:700; cursor:pointer; color:var(--c-ink-soft); white-space:nowrap}
+.lang-toggle button[aria-pressed="true"]{background:var(--c-btn-ink); color:var(--c-btn-text)}
+.nav-toggle{display:none; background:none; border:0; cursor:pointer; padding:6px; flex:0 0 auto}
+.nav-toggle span{display:block; width:24px; height:2px; background:var(--c-ink); margin:5px 0; transition:transform .25s var(--ease), opacity .25s var(--ease)}
+.nav-mobile-only{display:none}
+
+@media (max-width: 980px){
+  .nav-links{position:fixed; inset:64px 0 0 0; z-index:150; background:var(--c-canvas); flex-direction:column; align-items:stretch; padding:28px 24px 32px; gap:6px; transform:translateY(-8px); opacity:0; pointer-events:none; transition:opacity .25s var(--ease), transform .25s var(--ease); overflow-y:auto; justify-content:flex-start}
+  .nav-links.open{opacity:1; transform:translateY(0); pointer-events:auto}
+  .nav-links > li{white-space:normal; border-bottom:1px solid var(--c-line)}
+  .nav-links a{font-size:1.2rem; display:block; padding:14px 2px}
+  .nav-toggle{display:block}
+  .nav-actions{display:none}
+  .nav-mobile-only{display:flex; flex-direction:column; gap:14px; margin-top:18px; padding-top:10px}
+  .nav-mobile-only .lang-toggle{align-self:flex-start}
+}
+
+/* hero */
+.hero{position:relative; min-height:min(94vh,920px); display:flex; align-items:flex-end; overflow:hidden; color:#fff}
+.hero-media{position:absolute; inset:0; z-index:0; background:var(--c-dark-canvas)}
+.hero-media img{width:100%; height:100%; object-fit:cover; object-position:center 42%; position:absolute; inset:0}
+/* Still photo (warm plaster wall + linen bench, subject on the right,
+   headline sits over the empty left wall). A plain left-to-right plum
+   wash, no color-blend mode, so the warm, natural tone of the photo reads
+   through on the right (where the subject, in a plum outfit, already
+   ties into the palette) while the left side, under the headline, gets
+   enough density for AA contrast. Desktop only; mobile crops much tighter
+   and uses the bottom scrim below instead (see media query). */
+.hero-grade{position:absolute; inset:0; z-index:1; background:linear-gradient(90deg, rgba(43,24,54,.72) 0%, rgba(43,24,54,.58) 34%, rgba(43,24,54,.22) 58%, rgba(43,24,54,0) 72%); pointer-events:none}
+.hero-scrim{position:absolute; inset:0; background:linear-gradient(180deg, rgba(24,14,28,.1) 0%, rgba(24,14,28,.22) 55%, rgba(18,10,22,.74) 100%); z-index:2; pointer-events:none}
+@media(max-width:640px){
+  .hero-media img{object-position:68% center}
+  .hero-grade{background:linear-gradient(180deg, rgba(43,24,54,.15) 0%, rgba(43,24,54,.28) 45%, rgba(30,16,38,.8) 100%)}
+  .hero-scrim{background:linear-gradient(180deg, rgba(24,14,28,0) 0%, rgba(24,14,28,.2) 40%, rgba(18,10,22,.85) 100%)}
+}
+.hero-inner{position:relative; z-index:3; padding-bottom:clamp(48px,8vw,100px); width:100%; will-change:transform, opacity}
+.hero-inner .eyebrow{color:var(--c-dark-gold)}
+.hero h1{color:#fff; max-width:17ch; text-shadow:0 2px 24px rgba(0,0,0,.25)}
+.hero-sub{max-width:44ch; font-size:1.15rem; color:rgba(255,255,255,.94)}
+.hero-cta{display:flex; gap:14px; flex-wrap:wrap; margin-top:1.6em}
+/* Scoped to .hero specifically — .hero-cta is reused as a plain flex layout
+   helper on light-background sections too (e.g. the homepage closing CTA),
+   and this light-ghost-button treatment must not leak there. */
+.hero .hero-cta .btn-ghost{color:#fff; border-color:rgba(255,255,255,.6)}
+.hero .hero-cta .btn-ghost:hover{border-color:#fff; background:rgba(255,255,255,.08)}
+
+/* --- scroll-craft: pinned hero with independent planes ---
+   .hero-pin-spacer gives the pin its scroll distance. Inside, .hero itself
+   is pinned by ScrollTrigger (position:fixed applied by the library) while
+   three planes move at different rates as the visitor scrolls out of it:
+   the video (scales up slowly), the headline (.hero-inner, drifts up a
+   little faster than the video), and a soft foreground light-leak/spiral
+   plane (.hero-fg, drifts fastest, on top). All motion is transform/opacity
+   only. Fully inert (no pin, no motion) under prefers-reduced-motion or
+   when JS/ScrollTrigger fails to load; the plain static hero above degrades
+   to that automatically since these rules only apply once JS adds
+   .js-hero-pinned to <html>. */
+.hero-pin-spacer{position:relative}
+/* Framed bottom-right, sized well under the full hero so it sits beside/
+   around the hands in the footage rather than crossing the headline or
+   covering the subject. Starts faint (resting opacity set in JS, ~0.15) and
+   gains presence as the hero scrolls away. */
+.hero-fg{position:absolute; right:2%; bottom:6%; width:min(34vw,380px); height:min(34vw,380px); z-index:4; pointer-events:none; opacity:.15; mix-blend-mode:screen}
+.hero-fg svg{width:100%; height:100%}
+/* A soft full-bleed plum wash that ramps to fully opaque near the end of the
+   hero's pin, bridging the video into the dark .signature section right
+   after it so the transition reads as one continuous darkening rather than
+   a hard cut. Opacity is driven directly by scroll progress in JS. */
+.hero-darken{position:absolute; inset:0; z-index:2; background:var(--c-dark-canvas); opacity:0; pointer-events:none}
+.js-hero-pinned .hero-media img{will-change:transform}
+@media (prefers-reduced-motion: reduce){
+  .hero-fg{display:none}
+}
+
+/* --- scroll-craft: signature sequence (the spiral draws itself) ---
+   Pinned section. An SVG spiral path strokes in as stroke-dashoffset is
+   scrubbed by scroll progress; three short statements crossfade in step
+   with the line's travel. This is the page's engineered peak. */
+.signature{position:relative; background:var(--c-dark-canvas); color:var(--c-dark-ink); overflow:hidden}
+.signature-pin{min-height:100vh; display:flex; align-items:center; justify-content:center; position:relative}
+.signature-svg{width:min(70vw,640px); height:min(70vw,640px); max-width:90vw}
+.signature-svg path{fill:none; stroke:var(--c-dark-gold); stroke-width:3; stroke-linecap:round}
+.signature-stage{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 24px; opacity:0; pointer-events:none}
+.signature-stage.is-active{opacity:1}
+.signature-stage h3{font-size:clamp(1.6rem,4vw,2.6rem); max-width:14ch; color:var(--c-dark-ink)}
+.signature-eyebrow{position:absolute; top:clamp(28px,6vw,56px); left:50%; transform:translateX(-50%); color:var(--c-dark-gold)}
+@media (prefers-reduced-motion: reduce){
+  .signature-pin{min-height:auto; padding:96px 0; display:block}
+  .signature-stage{position:relative; inset:auto; opacity:1; pointer-events:auto; margin-bottom:48px}
+  .signature-svg{display:block; margin:0 auto 32px}
+}
+@media(max-width:760px){
+  .signature-svg{width:min(84vw,420px); height:min(84vw,420px)}
+}
+
+/* --- scroll-craft: testimonials as stops ---
+   A second pinned, scroll-scrubbed sequence, deliberately built to NOT
+   read as a repeat of .signature: light lilac canvas instead of dark, a
+   large quote with the attribution and a dot index positioned right beside
+   it, no drawn line dominating the composition. Each stop crossfades
+   continuously with scroll progress, same mechanism as the signature
+   stages, different composition.
+
+   Mobile/base layout: quote block, dots in a row below it, no visual
+   plane (kept simple and vertical for touch scroll). At >=1024px this
+   becomes a 12-col grid: quote+dots occupy cols 2-8 (roomier line length,
+   ~28-32ch), and cols 9-12 hold a large, thin, low-opacity spiral that
+   turns slowly as the visitor scrubs through the stops, a quiet echo of
+   the signature move rather than a repeat of it. */
+.testimonial-scroll{position:relative; background:var(--c-canvas-alt); overflow:hidden}
+.testimonial-pin{min-height:100vh; display:flex; align-items:center; position:relative; padding:10vh 0; box-sizing:border-box}
+.testimonial-grid{display:block; width:100%}
+.testimonial-content{display:flex; flex-direction:column; gap:28px}
+.testimonial-col{min-width:0}
+.testimonial-stage-wrap{position:relative; min-height:17em; margin-top:1.4em}
+.testimonial-stage{position:absolute; inset:0 auto 0 0; width:100%; display:flex; flex-direction:column; justify-content:flex-start; opacity:0; pointer-events:none}
+.testimonial-stage.is-active{opacity:1}
+.testimonial-quote{max-width:680px}
+.testimonial-quote q{display:block; font-family:var(--font-display); font-weight:375; font-size:clamp(1.4rem,2.6vw,2rem); line-height:1.4; color:var(--c-ink); quotes:none}
+.testimonial-quote q::before, .testimonial-quote q::after{content:""}
+.testimonial-quote .quote-attr{margin-top:.9em; color:var(--c-accent-deep)}
+.testimonial-index{display:flex; flex-direction:row; justify-content:center; gap:14px; align-items:center}
+.testimonial-dot{width:9px; height:9px; border-radius:50%; background:var(--c-line); border:1px solid var(--c-accent-soft); transition:background .3s var(--ease), transform .3s var(--ease); flex:none}
+.testimonial-dot.is-active{background:var(--c-accent-deep); border-color:var(--c-accent-deep); transform:scale(1.35)}
+.testimonial-visual{display:none}
+@media (prefers-reduced-motion: reduce){
+  .testimonial-pin{min-height:auto; padding:80px 0; display:block}
+  .testimonial-stage-wrap{min-height:auto}
+  .testimonial-stage{position:relative; inset:auto; opacity:1; pointer-events:auto; margin-bottom:40px}
+  .testimonial-index{display:none}
+}
+@media(min-width:1024px){
+  .testimonial-grid{display:grid; grid-template-columns:repeat(12,1fr); align-items:center; gap:clamp(20px,2.5vw,32px)}
+  .testimonial-content{grid-column:2 / 9; flex-direction:row; align-items:center; gap:24px}
+  .testimonial-col{flex:1; min-width:0}
+  /* Quote sized in px/rem, not ch, since ch scales with font-size and was
+     making the column shrink as the type got smaller. Capped so the
+     longest (is-long) quotes stay within ~7 lines at this width. */
+  .testimonial-quote{max-width:680px}
+  .testimonial-quote q{font-size:clamp(1.5rem,2.1vw,2rem)}
+  .testimonial-quote.is-long q{font-size:1.5rem}
+  /* Fixed-height wrap sized to comfortably fit the tallest (is-long, ~7
+     line) quote, with stages centered inside it rather than anchored to
+     the top, so no stop's text can run past the pinned viewport's edge. */
+  .testimonial-stage-wrap{min-height:23rem; margin-top:1.6em}
+  .testimonial-stage{justify-content:center}
+  /* Dots sit immediately left of the quote in their own narrow column
+     (order:-1 keeps DOM/reading order as quote-then-dots for assistive
+     tech while placing them visually first), vertically centered to the
+     quote via the row's align-items:center above. */
+  .testimonial-index{flex-direction:column; gap:16px; flex:none; order:-1}
+  .testimonial-visual{display:flex; grid-column:9 / 13; align-items:center; justify-content:center}
+  .testimonial-visual-svg{width:28vw; height:28vw; max-width:320px; max-height:320px}
+  .testimonial-visual-svg path{fill:none; stroke:var(--c-accent); stroke-width:1.1; stroke-linecap:round; opacity:.18}
+  @media (prefers-reduced-motion: reduce){
+    .testimonial-visual{display:none}
+  }
+}
+
+/* grid helpers */
+.grid{display:grid; gap:clamp(24px,4vw,48px)}
+.grid-2{grid-template-columns:1fr}
+.grid-3{grid-template-columns:1fr}
+@media(min-width:760px){ .grid-2{grid-template-columns:1fr 1fr} .grid-3{grid-template-columns:repeat(3,1fr)} }
+
+.card{background:var(--c-surface); border:1px solid var(--c-line); border-radius:var(--radius); padding:clamp(24px,3vw,36px); min-width:0}
+.stat{font-family:var(--font-display); font-size:2.6rem; color:var(--c-accent-deep)}
+
+/* signature move: "settle" reveal — elements arrive with a soft downward settle + tiny scale, like a body relaxing into stillness */
+.settle{opacity:0; transform:translateY(22px) scale(.99); transition:opacity .9s var(--ease), transform .9s var(--ease)}
+.settle.is-visible{opacity:1; transform:translateY(0) scale(1)}
+@media (prefers-reduced-motion: reduce){
+  .settle{opacity:1; transform:none; transition:none}
+}
+
+/* breath cue: a barely-perceptible scale pulse used ONCE per page on the primary CTA, echoing the slow breathing pace of an ABM lesson */
+.breathe{animation:breathe 6s var(--ease) infinite}
+@keyframes breathe{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.035)} }
+@media (prefers-reduced-motion: reduce){ .breathe{animation:none} }
+
+/* asymmetric / overlapping media composition */
+.media-overlap{position:relative; max-width:100%}
+.media-overlap img{border-radius:2px}
+.media-overlap .media-main{width:82%; margin-left:auto}
+.media-overlap .media-inset{position:absolute; left:0; bottom:-8%; width:46%; border:8px solid var(--c-canvas); box-shadow:0 24px 48px -20px rgba(20,14,6,.35)}
+@media(max-width:760px){
+  .media-overlap{margin-top:20px}
+  .media-overlap .media-main{width:100%; margin-left:0}
+  .media-overlap .media-inset{width:52%; left:-4%; bottom:-10%; border-width:6px}
+}
+
+/* feature pull-quote */
+.pull-quote{max-width:900px}
+.pull-quote q{display:block; font-family:var(--font-display); font-weight:500; font-size:clamp(1.6rem,3.4vw,2.6rem); line-height:1.28; color:var(--c-ink); quotes:none}
+.pull-quote q::before, .pull-quote q::after{content:""}
+.pull-quote .quote-attr{margin-top:1em; font-size:.95rem; letter-spacing:.02em}
+
+/* testimonial mini list (secondary, smaller) */
+.quote-card{border-left:3px solid var(--c-accent-soft); padding-left:1.4em; min-width:0}
+.quote-card q{font-family:var(--font-display); font-size:1.1rem; line-height:1.5}
+.quote-attr{margin-top:.8em; font-size:.86rem; color:var(--c-ink-soft); font-weight:600}
+
+/* footer */
+.site-footer{background:var(--c-dark-canvas); color:var(--c-dark-ink); padding:0}
+.footer-close{padding:clamp(56px,9vw,110px) 0 clamp(40px,6vw,64px); border-bottom:1px solid rgba(243,236,245,.14)}
+.footer-close .eyebrow{color:var(--c-dark-gold)}
+.footer-close h2{color:var(--c-dark-ink); max-width:16ch; font-size:clamp(2rem,4.6vw,3.4rem)}
+.site-footer a{color:var(--c-dark-ink); text-decoration:none; opacity:.85}
+.site-footer a:hover{opacity:1; text-decoration:underline}
+.footer-main{padding:clamp(40px,6vw,64px) 0}
+.footer-grid{display:grid; gap:32px; grid-template-columns:1.4fr 1fr 1fr 1fr}
+@media(max-width:800px){ .footer-grid{grid-template-columns:1fr 1fr} }
+.footer-grid h4{color:var(--c-dark-ink); font-size:.82rem; text-transform:uppercase; letter-spacing:.1em; font-family:var(--font-text); opacity:.8}
+.footer-grid ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.6em; font-size:.94rem}
+.footer-brand{display:flex; align-items:center; gap:10px; margin-bottom:14px}
+.footer-brand img{height:28px}
+.footer-bottom{padding:22px 0 32px; border-top:1px solid rgba(243,236,245,.14); display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; font-size:.82rem; opacity:.65}
+
+/* forms */
+.field{margin-bottom:1.3em; min-width:0}
+.field label{display:block; font-weight:600; font-size:.88rem; margin-bottom:.4em}
+.field .hint{font-size:.8rem; color:var(--c-ink-soft); margin-top:.3em}
+input[type="text"],input[type="email"],input[type="tel"],input[type="date"],textarea,select{
+  width:100%; padding:.85em 1em; border:1px solid var(--c-line); border-radius:var(--radius);
+  background:var(--c-surface); color:var(--c-ink); font-family:var(--font-text); font-size:1rem;
+}
+textarea{min-height:110px; resize:vertical}
+fieldset{border:1px solid var(--c-line); border-radius:var(--radius); padding:1.2em; min-width:0}
+legend{padding:0 .5em; font-weight:600}
+.radio-row, .check-row{display:flex; gap:18px; flex-wrap:wrap}
+.radio-row label, .check-row label{font-weight:400; display:flex; align-items:center; gap:.5em}
+
+/* steps */
+.step-progress{display:flex; gap:6px; margin-bottom:2em}
+.step-progress span{flex:1; height:4px; background:var(--c-line); border-radius:2px; overflow:hidden}
+.step-progress span i{display:block; height:100%; width:0; background:var(--c-btn-ink); transition:width .4s var(--ease)}
+.form-step{display:none}
+.form-step.active{display:block}
+.step-nav{display:flex; justify-content:space-between; margin-top:2em}
+
+/* location chooser */
+.loc-grid{display:grid; gap:20px; grid-template-columns:1fr}
+@media(min-width:760px){ .loc-grid{grid-template-columns:repeat(3,1fr)} }
+.loc-card{border:1px solid var(--c-line); border-radius:var(--radius); padding:28px; background:var(--c-surface); cursor:pointer; text-align:left; transition:border-color .25s var(--ease), transform .25s var(--ease); min-width:0}
+.loc-card:hover{border-color:var(--c-accent); transform:translateY(-3px)}
+.loc-card[aria-pressed="true"]{border-color:var(--c-btn-ink); box-shadow:0 0 0 1px var(--c-btn-ink)}
+
+#cal-embed-container{min-height:640px; border:1px solid var(--c-line); border-radius:var(--radius); overflow:hidden; background:var(--c-surface)}
+
+.placeholder-tag{display:inline-block; background:#EADCF0; color:#432850; font-size:.72rem; font-weight:700; padding:.2em .55em; border-radius:2px; letter-spacing:.03em}
+
+.faq-item{border-bottom:1px solid var(--c-line)}
+.faq-item summary{padding:1.3em 0; font-weight:600; cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:16px; font-family:var(--font-display); font-size:1.05rem}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::after{content:"+"; color:var(--c-accent); font-size:1.4rem; line-height:1}
+.faq-item[open] summary::after{content:"–"}
+.faq-item p{padding-bottom:1.3em; color:var(--c-ink-soft)}
+
+.skip-note{background:var(--c-canvas-alt); border:1px dashed var(--c-line); padding:20px; border-radius:var(--radius); font-size:.9rem; color:var(--c-ink-soft)}
+
+.newsletter{display:flex; gap:10px; flex-wrap:wrap}
+.newsletter input{flex:1; min-width:0}
+
+.visually-hidden{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+
+/* guard rails: nothing on the page should be allowed to force horizontal scroll.
+   min-width:0 is applied explicitly above on the specific flex/grid children
+   that need it to shrink (.card, .quote-card, .field, fieldset, .loc-card,
+   .newsletter input) rather than globally, since a blanket `* { min-width:0 }`
+   can quietly break intentional intrinsic sizing elsewhere. */
+img, video, iframe, table{ max-width:100%; }

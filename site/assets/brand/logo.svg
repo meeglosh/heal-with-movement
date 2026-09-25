@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 56" role="img" aria-labelledby="hwmLogoTitle">
+  <title id="hwmLogoTitle">Heal with Movement</title>
+  <g transform="translate(0,-4)">
+    <path d="M7 35
+             C 7 21, 19.25 10.5, 29.75 10.5
+             C 42 10.5, 49 19.25, 49 28
+             C 49 35, 43.75 39.375, 37.625 39.375
+             C 32.375 39.375, 28.875 35.875, 28.875 31.5
+             C 28.875 28, 31.5 25.375, 35 25.375"
+          fill="none" stroke="#3D2447" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="35" cy="25.375" r="3" fill="#7C5A94"/>
+  </g>
+  <text x="66" y="34" font-family="Fraunces, 'Iowan Old Style', Georgia, serif" font-size="23" font-weight="600" fill="#2E1F36" letter-spacing="0.2">Heal with Movement</text>
+</svg>
