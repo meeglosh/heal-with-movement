@@ -6,10 +6,26 @@ Cloudflare Pages Function for the intake form. It deploys to Cloudflare Pages.
 **This has not been deployed yet.** These are the steps to run when Heidi/the
 team is ready to go live.
 
-## 0. Regenerate HTML after editing copy
+## 0. Layout of this folder
 
-Content lives in `build.mjs`, not hand-edited in the `.html` files (they're
-generated output). After changing copy there, run:
+```
+site/
+  build.mjs          generator — the only source of the HTML, run with plain `node build.mjs`
+  wrangler.toml       pages_build_output_dir = "public"
+  functions/          Pages Functions — must stay at this root, a sibling of public/
+  public/             everything Cloudflare Pages serves: generated *.html, css/, js/,
+                       assets/, icons/, favicon.ico, _headers, robots.txt, sitemap.xml,
+                       site.webmanifest, 404.html
+  PLACEHOLDERS.md, DEPLOY.md   docs, not deployed
+```
+
+`build.mjs` has no npm dependencies and needs none installed to run (plain
+Node `fs`/`path`/`url`), and it never reads anything outside this repo. It
+only writes the `*.html` files into `public/`; every other file under
+`public/` (css, js, images, icons, etc.) is committed directly, there is no
+separate asset-build step. Content lives in `build.mjs`, not hand-edited in
+the `public/*.html` files (they're generated output, overwritten on every
+run). After changing copy there:
 
 ```bash
 cd site
@@ -38,20 +54,29 @@ and export it for the session instead of editing `wrangler.toml`:
 export CLOUDFLARE_ACCOUNT_ID=<gapco-llc-account-id>
 ```
 
-## 2. First deploy (creates the Pages project)
+## 2. First deploy
 
-From the `site/` directory:
+**Preferred: Git-connected build.** Cloudflare dashboard → Pages → Create
+project → Connect to Git → pick this repo, under the GAPCO LLC account, with:
+
+- **Root directory:** `site`
+- **Build command:** `node build.mjs`
+- **Build output directory:** `public`
+- **Production branch:** `main`
+
+Cloudflare's build image runs plain Node with no extra setup; `build.mjs` has
+no devDependencies to install, so no "Install command" is needed. Pages
+Functions in `site/functions/` are picked up automatically, since Cloudflare
+looks for `functions/` as a sibling of the build output directory, at the
+project root (`site/`), not inside `public/`.
+
+**Manual/CLI deploy** (e.g. for a one-off preview before Git is connected),
+from the `site/` directory:
 
 ```bash
-npx wrangler pages deploy . --project-name=heal-with-movement
+node build.mjs
+npx wrangler pages deploy public --project-name=heal-with-movement
 ```
-
-Or connect the GitHub repo in the Cloudflare dashboard (Pages → Create
-project → Connect to Git) under the GAPCO LLC account, with:
-
-- Build command: `node build.mjs` (or none, if `.html` files are committed)
-- Build output directory: `/site`
-- Root directory: repo root (or `/site` if this folder is the repo root)
 
 ## 3. Environment variables / secrets (Pages project settings)
 
@@ -66,8 +91,8 @@ Production and Preview:
 
 Also update the **public** Turnstile site key (safe to commit) in two places:
 
-- `site/intake.html` → `data-sitekey="{{TURNSTILE_SITE_KEY}}"`
-- `site/js/config.js` → `turnstileSiteKey`
+- `site/public/intake.html` → `data-sitekey="{{TURNSTILE_SITE_KEY}}"`
+- `site/public/js/config.js` → `turnstileSiteKey`
 
 ### Create the Turnstile widget
 
@@ -83,7 +108,7 @@ DNS if the domain isn't already on Cloudflare, or just proxy it if it is.
 ## 5. Cal.com setup
 
 1. Create a Cal.com account (or team) for Heidi at `healwithmovement` (or
-   update `js/config.js` if the real username differs).
+   update `public/js/config.js` if the real username differs).
 2. Create three **event types**:
    - `vermont-private` — In-person private lesson, Chittenden County, VT
    - `montreal-private` — In-person private lesson, Montreal, QC
@@ -92,7 +117,7 @@ DNS if the domain isn't already on Cloudflare, or just proxy it if it is.
      confirms group size.
 3. **Stripe**: Cal.com → Settings → Payments → connect Stripe account. On each
    event type, add a Payment step with the confirmed price (replace
-   `{{PRICE}}` in `services.html` once known) and currency.
+   `{{PRICE}}` in `public/services.html` once known) and currency.
 4. **Google Calendar sync**: Cal.com → Settings → My Availability →
    Conferencing/Calendars → connect Heidi's Google Calendar, both to check
    for conflicts and to write confirmed bookings.
@@ -100,7 +125,7 @@ DNS if the domain isn't already on Cloudflare, or just proxy it if it is.
    all three event types: email/SMS reminder 24h before, and a
    confirmation email immediately after booking.
 6. **Cancellation policy text**: paste the finalized cancellation copy from
-   `cancellation.html` into each event type's booking questions/description
+   `public/cancellation.html` into each event type's booking questions/description
    and into the confirmation email template, once `{{CANCELLATION_HOURS}}` is
    confirmed. Cal.com's own cancellation/reschedule policy field can also
    enforce the notice window automatically (Event type → Advanced → minimum
@@ -111,7 +136,7 @@ DNS if the domain isn't already on Cloudflare, or just proxy it if it is.
    the confirmation email/page for any event type used for a child's first
    session, so parents who booked directly still get prompted. (See
    `PLACEHOLDERS.md` → "Booking → intake flow" for the full reasoning.)
-8. Update `site/js/config.js` → `cal.calLink` with the real calLink slugs if
+8. Update `site/public/js/config.js` → `cal.calLink` with the real calLink slugs if
    they differ from the placeholders.
 
 ## 6. Resend setup (intake form email)
@@ -131,7 +156,7 @@ DNS if the domain isn't already on Cloudflare, or just proxy it if it is.
 - [ ] Turnstile site key + secret set, test intake form submits and email
       arrives at heidi@healwithmovement.com
 - [ ] Cal.com embed loads for all three locations on `/book.html`
-- [ ] Real hero video + poster in `assets/video/`
+- [ ] Hero is a still image (`public/assets/img/hero-1672.*` / `hero-1000.*`), not video. An earlier video pipeline was removed at the user's request; the encoded clips are kept for reference (not deployed) in `site/_unused/video/`.
 - [ ] `sitemap.xml` / `robots.txt` domain matches the real domain
 - [ ] Analytics snippet swapped from placeholder to real Plausible/Cloudflare
       Web Analytics site

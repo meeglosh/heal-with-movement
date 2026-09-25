@@ -42,8 +42,8 @@ occurrence.
 | Item | Where | Needed |
 |---|---|---|
 | Heidi's personal bio / training history / certification dates / headshot | about.html | The source docx did not include a first-person biography — only the ABM method description. Replace the "Placeholder for Heidi's review" block. |
-| Hero footage | `assets/video/hero.mp4`, `assets/video/hero-poster.jpg` | See `assets/video/README.md` for the full shot spec. A cropped Unsplash still is in place as a temporary poster. |
-| `favicon.ico` | `/favicon.ico` | Currently a renamed 32×32 PNG (works in most modern browsers but isn't a true multi-res .ico) — regenerate with a proper ico tool (e.g. RealFaviconGenerator) for full compatibility |
+| Hero image | `public/assets/img/hero-1672.*`, `hero-1000.*` | Real photography is already in place (a licensed still, not a placeholder). An earlier hero-video pipeline was removed at the user's request; the encoded clips are kept for reference only in `site/_unused/video/` (not deployed). |
+| `favicon.ico` | `public/favicon.ico` | Resolved — regenerated as a proper multi-size (16/32/48/64px) .ico from the brand mark. |
 | French translations | all pages | The EN/FR toggle in the header is a functional scaffold (persists choice, swaps `lang` attribute) but no French copy exists yet — see `js/main.js` |
 
 ## Booking → intake flow (decision made, documented here per task instructions)

@@ -1042,7 +1042,9 @@ const files = {
   "intake.html": intake,
 };
 
+const outDir = join(__dirname, "public");
+mkdirSync(outDir, { recursive: true });
 for (const [name, content] of Object.entries(files)) {
-  writeFileSync(join(__dirname, name), content, "utf8");
+  writeFileSync(join(outDir, name), content, "utf8");
 }
-console.log("Built", Object.keys(files).length, "pages.");
+console.log("Built", Object.keys(files).length, "pages into public/.");
