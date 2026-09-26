@@ -39,7 +39,7 @@ export async function limit(db, key, max = 60) {
 export async function ownedFlow(db, userId, flowId) {
   parse(id, flowId);
   const [flow] = await db.query(
-    `SELECT f.*,c.name AS child_name,c.birth_date,CASE WHEN f.child_id IS NULL THEN a.completed_at ELSE i.completed_at END AS completed_at FROM booking_flows f LEFT JOIN children c ON c.id=f.child_id LEFT JOIN intakes i ON i.child_id=f.child_id LEFT JOIN adult_intakes a ON a.user_id=f.user_id WHERE f.id=$1 AND f.user_id=$2 AND f.expires_at>now() AND (f.child_id IS NULL OR c.guardian_id=$2)`,
+    `SELECT f.*,c.name AS child_name,c.birth_date::text AS birth_date,CASE WHEN f.child_id IS NULL THEN a.completed_at ELSE i.completed_at END AS completed_at,CASE WHEN f.child_id IS NULL THEN a.reviewed_at ELSE i.reviewed_at END AS reviewed_at,CASE WHEN f.child_id IS NULL THEN a.version ELSE i.version END AS intake_version,CASE WHEN f.child_id IS NULL THEN a.reviewed_at ELSE i.reviewed_at END + interval '6 months' <= now() AS review_due FROM booking_flows f LEFT JOIN children c ON c.id=f.child_id LEFT JOIN intakes i ON i.child_id=f.child_id LEFT JOIN adult_intakes a ON a.user_id=f.user_id WHERE f.id=$1 AND f.user_id=$2 AND f.expires_at>now() AND (f.child_id IS NULL OR c.guardian_id=$2)`,
     [flowId, userId],
   );
   if (!flow)
@@ -56,7 +56,8 @@ function publicFlow(f) {
     childId: f.child_id,
     childName: f.child_name,
     birthDate: f.birth_date ? String(f.birth_date).slice(0, 10) : null,
-    needsIntake: !f.completed_at,
+    needsIntake: !f.completed_at || !!f.review_due,
+    reviewDue: !!f.review_due,
   };
 }
 function publicBooking(b) {
@@ -110,7 +111,12 @@ export async function portal(request, env, { db, auth, cal }) {
           }
         }),
     );
+    const reviews = await db.query(
+      "SELECT c.id::text,c.name,'child' AS kind,i.reviewed_at + interval '6 months' AS due_at FROM intakes i JOIN children c ON c.id=i.child_id WHERE c.guardian_id=$1 AND i.reviewed_at + interval '6 months' <= now() UNION ALL SELECT a.user_id,u.name,'adult' AS kind,a.reviewed_at + interval '6 months' AS due_at FROM adult_intakes a JOIN portal_users u ON u.id=a.user_id WHERE a.user_id=$1 AND a.reviewed_at + interval '6 months' <= now()",
+      [user.id],
+    );
     return json({
+      reviews,
       user: { name: user.name, email: user.email },
       staff: isStaff(user, env),
       children: children.map((c) => ({
@@ -151,20 +157,78 @@ export async function portal(request, env, { db, auth, cal }) {
     const action = match[2];
     if (!action && request.method === "GET") return json(publicFlow(flow));
     if (action === "intake") {
-      if (flow.completed_at)
+      if (flow.completed_at && !flow.review_due)
         throw new HttpError(409, "Intake is already complete.");
-      if (request.method === "GET")
+      const scope = flow.child_id || `adult:${user.id}`;
+      const table = flow.child_id ? "intakes" : "adult_intakes";
+      const key = flow.child_id ? "child_id" : "user_id";
+      const subject = flow.child_id || user.id;
+      if (request.method === "GET") {
+        const [saved] = flow.review_due
+          ? await db.query(
+              `SELECT encrypted_payload,version FROM ${table} WHERE ${key}=$1`,
+              [subject],
+            )
+          : [];
         return json({
+          reviewVersion: saved?.version,
+          answers: saved
+            ? await decryptIntake(
+                saved.encrypted_payload,
+                env.INTAKE_ENCRYPTION_KEY,
+                scope,
+              )
+            : null,
           html: flow.child_id ? intakeForm : adultIntakeForm,
           adultName: user.name,
           childName: flow.child_name,
           birthDate: flow.birth_date,
           email: user.email,
         });
+      }
       if (request.method === "POST") {
+        const body = await readJSON(request);
+        const { reviewVersion, unchanged, ...answers } = body;
+        if (
+          flow.review_due &&
+          (!Number.isInteger(reviewVersion) ||
+            reviewVersion !== flow.intake_version)
+        )
+          throw new HttpError(
+            409,
+            "This intake has been updated. Please reload it.",
+          );
+        if (unchanged !== undefined && unchanged !== true)
+          throw new HttpError(400, "Invalid review confirmation.");
+        if (unchanged && !flow.review_due)
+          throw new HttpError(
+            400,
+            "Complete intake before confirming a review.",
+          );
+        if (unchanged && Object.keys(answers).length)
+          throw new HttpError(400, "Choose confirmation or updated answers.");
+        if (flow.review_due && unchanged) {
+          const rows = await db.query(
+            `UPDATE ${table} SET reviewed_at=now(),version=version+1 WHERE ${key}=$1 AND version=$2 AND reviewed_at + interval '6 months' <= now() RETURNING version`,
+            [subject, reviewVersion],
+          );
+          if (!rows.length)
+            throw new HttpError(409, "This intake has already been reviewed.");
+          await db.query(
+            "INSERT INTO audit_events(id,actor_id,action,child_id,subject_user_id) VALUES($1,$2,$3,$4,$5)",
+            [
+              crypto.randomUUID(),
+              user.id,
+              "intake.review.unchanged",
+              flow.child_id,
+              flow.child_id ? null : user.id,
+            ],
+          );
+          return json({ ok: true });
+        }
         const data = parse(
           flow.child_id ? intakeInput : adultIntakeInput,
-          await readJSON(request),
+          answers,
         );
         // Identity belongs to the authenticated guardian and child record, never a submitted ID/email.
         if (flow.child_id) {
@@ -182,6 +246,24 @@ export async function portal(request, env, { db, auth, cal }) {
           env.INTAKE_ENCRYPTION_KEY,
           flow.child_id || `adult:${user.id}`,
         );
+        if (flow.review_due) {
+          // Lock, archive the previous signed form, and replace it atomically.
+          const rows = await db.query(
+            `WITH previous AS (SELECT * FROM ${table} WHERE ${key}=$1 AND version=$2 AND reviewed_at + interval '6 months' <= now() FOR UPDATE), archived AS (INSERT INTO intake_review_history(id,actor_id,child_id,subject_user_id,encrypted_payload,version,reviewed_at) SELECT $4,$5,$6,$7,encrypted_payload,version,reviewed_at FROM previous RETURNING id) UPDATE ${table} SET encrypted_payload=$3,reviewed_at=now(),version=${table}.version+1 WHERE ${key}=$1 AND version=$2 AND EXISTS(SELECT 1 FROM archived) RETURNING version`,
+            [
+              subject,
+              reviewVersion,
+              encrypted,
+              crypto.randomUUID(),
+              user.id,
+              flow.child_id,
+              flow.child_id ? null : user.id,
+            ],
+          );
+          if (!rows.length)
+            throw new HttpError(409, "This intake has already been reviewed.");
+          return json({ ok: true });
+        }
         const rows = flow.child_id
           ? await db.query(
               "INSERT INTO intakes(child_id,guardian_id,encrypted_payload) VALUES($1,$2,$3) ON CONFLICT(child_id) DO NOTHING RETURNING child_id",
@@ -198,10 +280,10 @@ export async function portal(request, env, { db, auth, cal }) {
       }
     }
     if (["slots", "book"].includes(action)) {
-      if (!flow.completed_at)
+      if (!flow.completed_at || flow.review_due)
         throw new HttpError(
           409,
-          "Please complete intake before choosing a time.",
+          "Please complete or review intake before choosing a time.",
         );
       const eid = eventId(env, flow.service, !!flow.child_id);
       const event = await cal.event(eid);
@@ -335,6 +417,7 @@ export async function portal(request, env, { db, auth, cal }) {
         `adult:${subject}`,
       ),
       completedAt: row.completed_at,
+      reviewedAt: row.reviewed_at,
     });
   }
   const admin = path.match(/^\/admin\/intakes\/([^/]+)$/);
@@ -356,6 +439,7 @@ export async function portal(request, env, { db, auth, cal }) {
         admin[1],
       ),
       completedAt: row.completed_at,
+      reviewedAt: row.reviewed_at,
     });
   }
   throw new HttpError(404, "Not found.");

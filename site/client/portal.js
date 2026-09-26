@@ -144,13 +144,23 @@ function codeScreen() {
 async function dashboard() {
   me = await api("/api/portal/me");
   render(
-    `${toolbar()}<h2>Your account.</h2><p>Welcome, ${escape(me.user.name)}.</p><button class="btn btn-primary" id="new-booking">Book a Session</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review intake</button>' : ""}`,
+    `${toolbar()}<h2>Your account.</h2><p>Welcome, ${escape(me.user.name)}.</p>${me.reviews?.length ? `<p class="portal-review-notice">Intake review due for ${me.reviews.map((r) => escape(r.kind === "adult" ? "you" : r.name)).join(", ")}. Please review your saved answers.</p><div class="portal-options">${me.reviews.map((r, i) => `<button class="portal-choice" data-review="${i}">Review ${r.kind === "adult" ? "your intake" : escape(r.name) + "’s intake"}</button>`).join("")}</div>` : ""}<button class="btn btn-primary" id="new-booking">Book a Session</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review intake</button>' : ""}`,
   );
   wireToolbar();
   on("#new-booking", () => {
     history.replaceState(null, "", "/book.html");
     choosePerson();
   });
+  for (const [index, review] of (me.reviews || []).entries()) {
+    on(`[data-review="${index}"]`, async () => {
+      flow = await api("/api/portal/flows", {
+        service: "vermont",
+        childId: review.kind === "child" ? review.id : null,
+      });
+      history.replaceState(null, "", `/book.html?flow=${flow.id}&review=1`);
+      await resumeFlow();
+    });
+  }
   on("#staff-intakes", staffList);
 }
 function choosePerson() {
@@ -169,7 +179,7 @@ function choosePerson() {
 }
 function addChild() {
   render(
-    `${toolbar()}<h2>Your child.</h2><p>Create a profile so you only need to complete intake once for this child.</p><form id="child-form"><div class="field"><label for="child-name">Child’s full name</label><input id="child-name" name="name" maxlength="200" required autocomplete="off"></div><div class="field"><label for="child-birth">Date of birth</label><input id="child-birth" type="date" name="birthDate" max="${new Date().toISOString().slice(0, 10)}" required></div><button class="btn btn-primary">Continue</button></form><button class="portal-link" id="back">Back</button>`,
+    `${toolbar()}<h2>Your child.</h2><p>Create a profile to keep this child’s intake on file. We’ll ask you to review it every six months.</p><form id="child-form"><div class="field"><label for="child-name">Child’s full name</label><input id="child-name" name="name" maxlength="200" required autocomplete="off"></div><div class="field"><label for="child-birth">Date of birth</label><input id="child-birth" type="date" name="birthDate" max="${new Date().toISOString().slice(0, 10)}" required></div><button class="btn btn-primary">Continue</button></form><button class="portal-link" id="back">Back</button>`,
   );
   wireToolbar();
   on("#back", choosePerson);
@@ -228,22 +238,42 @@ function chooseService() {
 async function resumeFlow() {
   flow = await api(`/api/portal/flows/${flow.id}`);
   if (flow.needsIntake) return intake();
+  if (new URLSearchParams(location.search).has("review")) {
+    history.replaceState(null, "", "/account.html");
+    return dashboard();
+  }
   week = 0;
   await slots();
 }
 async function intake() {
   const data = await api(`/api/portal/flows/${flow.id}/intake`);
   render(
-    `${toolbar()}<p class="eyebrow">First session</p><h2>Getting to know ${flow.childId ? escape(flow.childName) : "you"}.</h2><p>Complete this once. It will stay on file for future bookings.</p>${data.html}`,
+    `${toolbar()}<p class="eyebrow">${data.answers ? "Six-month intake review" : "First session"}</p><h2>${data.answers ? "Review your intake." : `Getting to know ${flow.childId ? escape(flow.childName) : "you"}.`}</h2><p>${data.answers ? "Please review your saved answers below. Make any changes needed, or confirm that nothing has changed. If you make changes, sign and date the form again using today’s date." : "Your answers will stay on file. We’ll ask you to review them every six months."}</p>${data.html}`,
   );
   wireToolbar();
   const form = screen.querySelector("#intake-form");
+  if (data.answers) {
+    for (const element of form.elements) {
+      const value = data.answers[element.name];
+      if (value === undefined) continue;
+      if (element.type === "checkbox")
+        element.checked = Array.isArray(value)
+          ? value.includes(element.value)
+          : value === element.value;
+      else if (element.type === "radio")
+        element.checked = value === element.value;
+      else element.value = value;
+    }
+  }
   for (const [k, v] of Object.entries({
-    clientName: data.childName || data.adultName || "",
-    birthDate: data.birthDate ? String(data.birthDate).slice(0, 10) : "",
+    clientName:
+      data.childName || data.answers?.clientName || data.adultName || "",
+    birthDate: data.birthDate
+      ? String(data.birthDate).slice(0, 10)
+      : data.answers?.birthDate || "",
     email: data.email,
-    guardianName: me.user.name,
-    signDate: new Date().toISOString().slice(0, 10),
+    guardianName: data.answers?.guardianName || me.user.name,
+    signDate: data.answers?.signDate || new Date().toISOString().slice(0, 10),
   })) {
     if (form.elements[k]) form.elements[k].value = v;
   }
@@ -256,7 +286,39 @@ async function intake() {
   const back = form.querySelector("#intake-back"),
     next = form.querySelector("#intake-next"),
     submit = form.querySelector("#intake-submit");
+  if (data.answers) {
+    submit.textContent = "Save updated intake";
+    const confirm = document.createElement("button");
+    confirm.type = "button";
+    confirm.id = "intake-unchanged";
+    confirm.className = "btn btn-ghost";
+    confirm.textContent = "Nothing has changed — confirm review";
+    form.querySelector(".step-nav").append(confirm);
+    // Editing an answer disables the no-change path, so changes cannot be silently discarded.
+    form.addEventListener("input", () => {
+      confirm.disabled = true;
+    });
+    form.addEventListener("change", () => {
+      confirm.disabled = true;
+    });
+    on("#intake-unchanged", async () => {
+      try {
+        await api(`/api/portal/flows/${flow.id}/intake`, {
+          unchanged: true,
+          reviewVersion: data.reviewVersion,
+        });
+      } catch (error) {
+        if (error.status === 409) return resumeFlow();
+        throw error;
+      }
+      message("Review saved. Your next review is due in six months.");
+      await resumeFlow();
+    });
+  }
   function show() {
+    const confirm = form.querySelector("#intake-unchanged");
+    if (confirm)
+      confirm.style.display = current === steps.length - 1 ? "" : "none";
     steps.forEach((s, i) => s.classList.toggle("active", i === current));
     back.disabled = current === 0;
     next.style.display = current === steps.length - 1 ? "none" : "";
@@ -288,6 +350,7 @@ async function intake() {
       }
       const formData = new FormData(form);
       const values = Object.fromEntries(formData);
+      if (data.answers) values.reviewVersion = data.reviewVersion;
       if (!flow.childId) values.conditions = formData.getAll("conditions");
       try {
         await api(`/api/portal/flows/${flow.id}/intake`, values);
@@ -295,11 +358,8 @@ async function intake() {
         if (error.status === 409) return resumeFlow();
         throw error;
       }
-      message(
-        "Intake saved. You won’t need to fill it out for future bookings.",
-      );
-      flow.needsIntake = false;
-      await slots();
+      message("Intake saved. We’ll ask you to review it again in six months.");
+      await resumeFlow();
     },
     "submit",
   );
@@ -391,7 +451,7 @@ async function staffList() {
         `/api/portal/admin/${b.dataset.kind === "adult" ? "adult-intakes" : "intakes"}/${encodeURIComponent(b.dataset.intake)}`,
       );
       render(
-        `${toolbar()}<h2>Intake record.</h2><dl class="portal-record">${Object.entries(
+        `${toolbar()}<h2>Intake record.</h2><p class="muted">Last reviewed: ${escape(new Date(data.reviewedAt || data.completedAt).toLocaleDateString())}</p><dl class="portal-record">${Object.entries(
           data.intake,
         )
           .map(

@@ -3,12 +3,15 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve, extname } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+import { encryptIntake } from "../server/crypto.js";
+import { intakeInput, adultIntakeInput } from "../server/validation.js";
 import { portal } from "../server/portal.js";
 const pg = new PGlite();
 for (const file of [
   "001_portal.sql",
   "002_booking_seats.sql",
   "003_adult_intakes.sql",
+  "004_intake_reviews.sql",
 ])
   await pg.exec(
     await readFile(new URL("../migrations/" + file, import.meta.url), "utf8"),
@@ -28,6 +31,63 @@ const user = {
 const start = new Date(Date.now() + 86400000);
 start.setUTCHours(15, 0, 0, 0);
 const db = { query: async (s, p) => (await pg.query(s, p)).rows };
+if (process.env.INTAKE_REVIEW_FIXTURE === "1") {
+  await db.query("INSERT INTO portal_users(id,name,email) VALUES($1,$2,$3)", [
+    user.id,
+    user.name,
+    user.email,
+  ]);
+  const childId = crypto.randomUUID();
+  await db.query(
+    "INSERT INTO children(id,guardian_id,name,birth_date) VALUES($1,$2,'Test Child','2020-01-01')",
+    [childId, user.id],
+  );
+  const base = {
+    clientName: user.name,
+    birthDate: "1980-01-01",
+    address: "1 Test Street",
+    city: "Test City",
+    province: "VT",
+    postalCode: "12345",
+    email: user.email,
+    preferredPhone: "cell",
+    reason: "Synthetic saved history",
+    signature: "Test Parent",
+    signDate: "2025-01-01",
+  };
+  const adult = adultIntakeInput.parse({
+    ...base,
+    educationInitials: "TP",
+    discomfortInitials: "TP",
+    healthInitials: "TP",
+    cancellationInitials: "TP",
+    releasorName: "Test Parent",
+    conditions: ["Arthritis", "Vision: Glasses"],
+  });
+  const child = intakeInput.parse({
+    ...base,
+    clientName: "Test Child",
+    birthDate: "2020-01-01",
+    guardianName: "Test Parent",
+    consent: "on",
+    hasTubes: "no",
+  });
+  await db.query(
+    "INSERT INTO adult_intakes(user_id,encrypted_payload,reviewed_at) VALUES($1,$2,now()-interval '7 months')",
+    [
+      user.id,
+      await encryptIntake(adult, env.INTAKE_ENCRYPTION_KEY, `adult:${user.id}`),
+    ],
+  );
+  await db.query(
+    "INSERT INTO intakes(child_id,guardian_id,encrypted_payload,reviewed_at) VALUES($1,$2,$3,now()-interval '7 months')",
+    [
+      childId,
+      user.id,
+      await encryptIntake(child, env.INTAKE_ENCRYPTION_KEY, childId),
+    ],
+  );
+}
 const cal = {
   event: async () => ({
     confirmationPolicy: { type: "always", disabled: false },

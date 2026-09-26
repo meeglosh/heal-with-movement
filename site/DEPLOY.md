@@ -74,8 +74,8 @@ npx wrangler pages deploy public --project-name=heal-with-movement
 
 ## Behavior and operational checks
 
-- Intake is available only after sign-in and starting a booking. Adult bookings require the adult form once per account; child bookings require the child form once per child. Both availability and booking creation are blocked server-side until the relevant intake is complete. The old `/intake` and `/intake.html` routes redirect to booking.
-- Intake is encrypted with AES-GCM and bound to its child ID or adult account ID. A unique database key prevents a second submission from replacing it. It remains completed after abandoned or cancelled bookings.
+- Intake is available only after sign-in and starting a booking. Adult bookings require the adult form per account; child bookings require the child form per child. Saved intake is reviewed every six calendar months. Both availability and booking creation are blocked server-side until the relevant intake is complete. The old `/intake` and `/intake.html` routes redirect to booking.
+- Intake is encrypted with AES-GCM and bound to its child ID or adult account ID. A unique database key prevents duplicate initial submissions. Due reviews use version checks to prevent stale tabs from overwriting newer reviews. It remains completed after abandoned or cancelled bookings.
 - One parent account can own multiple child profiles. Sharing a child between parent accounts is not implemented.
 - Heidi reads intake from **My account → Review intake**, with server-side staff authorization and an access audit record. Intake is not sent by email.
 - One booking flow creates at most one remote booking attempt. If Cal.com times out, the request is marked `needs_review`; check Cal.com before asking the client to try a new booking.
@@ -97,3 +97,9 @@ Schedule `2416901`: Monday–Friday, 10:00–17:00, America/New_York. All sessio
 Event types are hidden from the public Cal.com profile. Hidden does not make a known direct URL inaccessible. Precise private-session meeting addresses still need Heidi’s confirmation.
 
 Adult intake uses `003_adult_intakes.sql`, encrypted with the existing intake key and bound to the authenticated adult account. Completion persists even if the booking is abandoned or cancelled. Existing adults with no saved intake must complete it at their next booking. The original form is in `docs/Original website copy/ABM Intake form (Adult).pdf`; health answers and the four initialed acknowledgments are preserved. Staff reads are audited by adult account ID.
+
+## Six-month intake reviews
+
+Apply `004_intake_reviews.sql` before deploying this update. Existing records use their original completion date as the initial review date. Each adult and child has a separate `reviewed_at` timestamp; a review is due six calendar months later. Account-page prompts let users review without booking, and overdue intake blocks new availability/booking requests until reviewed. Prompts appear in the portal; no automatic reminder emails are sent.
+
+Due forms show saved answers. Users can save edits with a current signature date, or confirm no changes after paging through the form. Either action resets the six-month clock. No-change confirmations preserve the signed answers and create an audit entry; edits archive the previous encrypted payload in `intake_review_history` atomically. Staff can see the last-reviewed date. Run `INTAKE_REVIEW_FIXTURE=1 node tests/preview.mjs` for isolated synthetic adult and child review UI testing.

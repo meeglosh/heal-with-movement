@@ -62,6 +62,7 @@ before(async () => {
     "001_portal.sql",
     "002_booking_seats.sql",
     "003_adult_intakes.sql",
+    "004_intake_reviews.sql",
   ])
     await pg.exec(
       await readFile(new URL("../migrations/" + file, import.meta.url), "utf8"),
@@ -470,4 +471,120 @@ test("Heidi’s rejection updates the account and booking retries cannot confirm
   );
   assert.equal((await retry.json()).booking.status, "rejected");
   assert.equal(calls, attempts);
+});
+
+test("adult and child reviews recur after six calendar months and cannot bypass ownership or overwrite a newer review", async () => {
+  const [child] = await db.query("SELECT child_id FROM intakes LIMIT 1");
+  for (const [table, key, subject, childId] of [
+    ["adult_intakes", "user_id", user.id, null],
+    ["intakes", "child_id", child.child_id, child.child_id],
+  ]) {
+    await db.query("DELETE FROM api_limits");
+    const flow = await data("/flows", { service: "vermont", childId });
+    assert.equal(flow.needsIntake, false);
+    await db.query(
+      `UPDATE ${table} SET reviewed_at=now()-interval '6 months'+interval '1 day' WHERE ${key}=$1`,
+      [subject],
+    );
+    assert.equal((await data(`/flows/${flow.id}`)).reviewDue, false);
+    await db.query(
+      `UPDATE ${table} SET reviewed_at=now()-interval '6 months' WHERE ${key}=$1`,
+      [subject],
+    );
+    assert.equal((await data(`/flows/${flow.id}`)).reviewDue, true);
+    const account = await data("/me");
+    assert.ok(account.reviews.some((r) => r.id === subject));
+    await assert.rejects(
+      request(`/flows/${flow.id}/slots`),
+      (e) => e.status === 409,
+    );
+    await assert.rejects(
+      request(`/flows/${flow.id}/book`, {
+        start: new Date(Date.now() + 86400000).toISOString(),
+        timeZone: "UTC",
+        name: "Parent",
+      }),
+      (e) => e.status === 409,
+    );
+    await assert.rejects(
+      request(`/flows/${flow.id}/intake`, undefined, {
+        ...user,
+        id: "stranger",
+      }),
+      (e) => e.status === 404,
+    );
+    const form = await data(`/flows/${flow.id}/intake`);
+    assert.ok(form.answers.reason);
+    await assert.rejects(
+      request(`/flows/${flow.id}/intake`, {
+        unchanged: true,
+        reviewVersion: form.reviewVersion + 1,
+      }),
+      (e) => e.status === 409,
+    );
+    const [before] = await db.query(`SELECT * FROM ${table} WHERE ${key}=$1`, [
+      subject,
+    ]);
+    await data(`/flows/${flow.id}/intake`, {
+      unchanged: true,
+      reviewVersion: form.reviewVersion,
+    });
+    const [confirmed] = await db.query(
+      `SELECT *,reviewed_at + interval '6 months' > now() AS current FROM ${table} WHERE ${key}=$1`,
+      [subject],
+    );
+    assert.equal(confirmed.encrypted_payload, before.encrypted_payload);
+    assert.equal(confirmed.version, before.version + 1);
+    assert.equal(confirmed.current, true);
+    assert.equal((await data(`/flows/${flow.id}`)).needsIntake, false);
+    await assert.rejects(
+      request(`/flows/${flow.id}/intake`, {
+        unchanged: true,
+        reviewVersion: form.reviewVersion,
+      }),
+      (e) => e.status === 409,
+    );
+    // A later review can edit health answers, while preserving the previous signed form.
+    await db.query(
+      `UPDATE ${table} SET reviewed_at=now()-interval '7 months' WHERE ${key}=$1`,
+      [subject],
+    );
+    const review = await data(`/flows/${flow.id}/intake`);
+    const edited = {
+      ...review.answers,
+      reason: "Updated synthetic history",
+      signDate: new Date().toISOString().slice(0, 10),
+      reviewVersion: review.reviewVersion,
+    };
+    await data(`/flows/${flow.id}/intake`, edited);
+    const [saved] = await db.query(`SELECT * FROM ${table} WHERE ${key}=$1`, [
+      subject,
+    ]);
+    const scope = childId || `adult:${user.id}`;
+    assert.equal(
+      (
+        await decryptIntake(
+          saved.encrypted_payload,
+          env.INTAKE_ENCRYPTION_KEY,
+          scope,
+        )
+      ).reason,
+      edited.reason,
+    );
+    const [history] = await db.query(
+      "SELECT * FROM intake_review_history WHERE child_id=$1 OR subject_user_id=$2",
+      [childId, childId ? null : user.id],
+    );
+    assert.equal(
+      (
+        await decryptIntake(
+          history.encrypted_payload,
+          env.INTAKE_ENCRYPTION_KEY,
+          scope,
+        )
+      ).reason,
+      review.answers.reason,
+    );
+    assert.equal((await data(`/flows/${flow.id}`)).reviewDue, false);
+  }
 });

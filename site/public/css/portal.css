@@ -212,3 +212,15 @@
     grid-template-columns: 1fr;
   }
 }
+
+.portal-panel .step-nav {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.portal-panel .step-nav .btn {
+  white-space: normal;
+  max-width: 100%;
+}
+.portal-panel #intake-unchanged {
+  flex-basis: 100%;
+}
