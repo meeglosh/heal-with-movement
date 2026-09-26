@@ -1,8 +1,9 @@
 // Static site generator for Heal with Movement.
 // Run: node build.mjs   (writes .html files into this directory)
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync, readFileSync, mkdirSync, rmSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { createHash } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SITE_URL = "https://healwithmovement.com"; // update at deploy if domain differs
@@ -93,7 +94,6 @@ function header(active) {
                scaffold (main.js data-lang handler, .lang-toggle CSS) is kept
                in the codebase, unreferenced, to re-enable later. See
                PLACEHOLDERS.md. -->
-          <a class="btn btn-ghost btn-small" href="/intake.html">Child Intake</a>
           <a class="btn btn-primary btn-small" href="/book.html">Book a Session</a>
         </li>
       </ul>
@@ -116,7 +116,6 @@ function footer() {
       <h2>Small movements. Real change.</h2>
       <div class="hero-cta">
         <a class="btn btn-primary" href="/book.html">Book a Session</a>
-        <a class="btn btn-ghost" href="/intake.html" style="color:#F3ECF5; border-color:rgba(243,236,245,.4)">Child Intake Form</a>
       </div>
     </div>
   </div>
@@ -150,7 +149,7 @@ function footer() {
           <h4>Get started</h4>
           <ul>
             <li><a href="/book.html">Book a session</a></li>
-            <li><a href="/intake.html">Child intake form</a></li>
+            <li><a href="/account.html">My account</a></li>
             <li><a href="/contact.html">Contact</a></li>
           </ul>
         </div>
@@ -401,7 +400,6 @@ ${signatureSequence()}
       <div class="media-main-frame" id="science-main-frame">
         <img class="media-main" id="science-main-img" src="/assets/img/fuu-j-r2nJPbEYuSQ-unsplash.jpg" alt="A moment of openness and ease, arms outstretched in warm light" loading="lazy">
       </div>
-      <img class="media-inset" id="science-inset-img" src="/assets/img/haley-phelps-S-llxYh3GzI-unsplash.jpg" alt="Floating calmly in still water" loading="lazy">
     </div>
   </div>
 </section>
@@ -435,10 +433,9 @@ ${testimonialSequence()}
 <section class="section">
   <div class="wrap" style="text-align:center;">
     <h2>Ready to move differently?</h2>
-    <p style="max-width:50ch; margin:0 auto 1.6em;">Choose a location and find a time that works, or start with the child intake form if you're booking for your child.</p>
+    <p style="max-width:50ch; margin:0 auto 1.6em;">Choose a location and find a time that works. If you’re booking for your child, their first-session intake is part of the booking process.</p>
     <div class="hero-cta" style="justify-content:center;">
       <a class="btn btn-primary" href="/book.html">Book a Session</a>
-      <a class="btn btn-ghost" href="/intake.html">Child Intake Form</a>
     </div>
   </div>
 </section>
@@ -611,21 +608,21 @@ const services = page({
         <h3>Vermont Private Lesson</h3>
         <p>In-person, one-on-one, Chittenden County, VT.</p>
         <p class="stat">{{PRICE}}</p>
-        <p class="hint">Session length: {{DURATION}}</p>
+        <p class="hint">Session length: 60 minutes</p>
         <a class="btn btn-primary btn-small" href="/book.html?location=vermont">Book Vermont</a>
       </div>
       <div class="card settle">
         <h3>Montreal Private Lesson</h3>
         <p>In-person, one-on-one, Montreal, QC.</p>
         <p class="stat">{{PRICE}}</p>
-        <p class="hint">Session length: {{DURATION}}</p>
+        <p class="hint">Session length: 60 minutes</p>
         <a class="btn btn-primary btn-small" href="/book.html?location=montreal">Book Montreal</a>
       </div>
       <div class="card settle">
         <h3>Virtual Group Class</h3>
-        <p>Live online group session, seats limited.</p>
+        <p>Live online group session.</p>
         <p class="stat">{{PRICE}}</p>
-        <p class="hint">Session length: {{DURATION}} · Seats: {{GROUP_SEATS}}</p>
+        <p class="hint">Session length: 60 minutes</p>
         <a class="btn btn-primary btn-small" href="/book.html?location=virtual">Book Virtual</a>
       </div>
     </div>
@@ -637,7 +634,7 @@ const services = page({
     <div class="settle">
       <h2>Sessions for children</h2>
       <p>For a child's first session, please complete the intake form in advance so Heidi can prepare for your visit.</p>
-      <a class="btn btn-ghost" href="/intake.html">Complete the child intake form</a>
+      <a class="btn btn-ghost" href="/book.html?for=child">Book for your child</a>
     </div>
     <div class="settle">
       <h2>Cancellation policy</h2>
@@ -650,46 +647,20 @@ const services = page({
 });
 
 // ---------- BOOK ----------
-const book = page({
-  path: "/book.html",
-  title: "Book a Session | Heal with Movement",
-  description: "Choose your location and book an Anat Baniel Method NeuroMovement session with Heidi Rood via Cal.com.",
-  active: "/book.html",
-  body: `
-<section class="section">
-  <div class="wrap">
-    <p class="eyebrow">Book</p>
-    <h1>Book a session</h1>
-    <p style="max-width:60ch; color:var(--c-ink-soft);">First, choose where you'd like to work together. If you're booking for a child's first session, please complete the <a href="/intake.html">intake form</a> first, Heidi reviews it before your first lesson.</p>
-
-    <div class="loc-grid" id="location-chooser" role="group" aria-label="Choose a location">
-      <button class="loc-card" type="button" data-cal-key="vermont" aria-pressed="false">
-        <h3>Chittenden County, VT</h3>
-        <p>In-person private lesson</p>
-      </button>
-      <button class="loc-card" type="button" data-cal-key="montreal" aria-pressed="false">
-        <h3>Montreal, QC</h3>
-        <p>In-person private lesson</p>
-      </button>
-      <button class="loc-card" type="button" data-cal-key="virtual" aria-pressed="false">
-        <h3>Virtual</h3>
-        <p>Live group class, online</p>
-      </button>
-    </div>
-
-    <div id="child-notice" class="skip-note" style="margin-top:1.5em; display:none;">
-      Booking for a child? Please complete the <a href="/intake.html">child intake form</a> before your first session, Heidi reviews every intake before meeting a new child client.
-    </div>
-
-    <div id="cal-embed-container" style="margin-top:2em;" aria-live="polite">
-      <p style="padding:32px; color:var(--c-ink-soft);">Select a location above to load available times.</p>
-    </div>
+const portalVersion = createHash('sha256').update(readFileSync(join(__dirname,'client/portal.js'))).update(readFileSync(join(__dirname,'public/css/portal.css'))).digest('hex').slice(0,12);
+const portalBody = `
+<section class="section portal-section">
+ <div class="wrap portal-shell">
+  <div class="portal-heading"><p class="eyebrow">Your next step</p><h1>Move toward<br><em>feeling better.</em></h1><p class="lede">Your sessions, your family, one simple place.</p></div>
+  <div class="portal-panel" id="portal" aria-busy="true">
+   <p id="portal-status" role="status" aria-live="polite">Loading your account…</p>
+   <div id="portal-screen"></div>
   </div>
+ </div>
 </section>
-`,
-  extraHead: `<script src="https://app.cal.com/embed/embed.js" async></script>`,
-  extraScripts: `<script src="/js/booking.js" defer></script>`,
-});
+<noscript><p class="wrap">Please enable JavaScript to sign in and book, or <a href="/contact.html">contact Heidi</a> for help.</p></noscript>`;
+const book = page({path:"/book.html",title:"Book a Session | Heal with Movement",description:"Sign in and book a session for yourself or your child.",active:"/book.html",body:portalBody,extraHead:`<meta name="robots" content="noindex"><link rel="stylesheet" href="/css/portal.css?v=${portalVersion}">`,extraScripts:`<script src="/js/portal.js?v=${portalVersion}" type="module"></script>`});
+const accountPage = page({path:"/account.html",title:"My account | Heal with Movement",description:"Manage your family and appointments.",active:"/account.html",body:portalBody,extraHead:`<meta name="robots" content="noindex"><link rel="stylesheet" href="/css/portal.css?v=${portalVersion}">`,extraScripts:`<script src="/js/portal.js?v=${portalVersion}" type="module"></script>`});
 
 // ---------- FAQ ----------
 const faqItems = [
@@ -1074,7 +1045,7 @@ const files = {
   "cancellation.html": cancellation,
   "disclaimer.html": disclaimer,
   "404.html": notFound,
-  "intake.html": intake,
+  "account.html": accountPage,
 };
 
 const outDir = join(__dirname, "public");
@@ -1083,3 +1054,11 @@ for (const [name, content] of Object.entries(files)) {
   writeFileSync(join(outDir, name), content, "utf8");
 }
 console.log("Built", Object.keys(files).length, "pages into public/.");
+
+const protectedForm = intake.match(/<form id="intake-form"[\s\S]*?<\/form>/)[0]
+ .replace(/<div class="field">\s*<div id="turnstile-widget"[\s\S]*?<\/div>\s*<p class="hint">[\s\S]*?<\/p>\s*<\/div>/, "");
+writeFileSync(join(__dirname, "server/intake-form.js"), "// Generated from the existing intake form; served only after authorization.\nexport const intakeForm = " + JSON.stringify(protectedForm) + ";\n");
+rmSync(join(outDir,"intake.html"), {force:true});
+
+const { build } = await import('esbuild');
+await build({entryPoints:[join(__dirname,'client/portal.js')],bundle:true,format:'esm',minify:true,outfile:join(__dirname,'public/js/portal.js'),target:['es2022'],supported:{'template-literal':false}});

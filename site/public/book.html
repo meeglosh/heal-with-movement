@@ -4,17 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Book a Session | Heal with Movement</title>
-<meta name="description" content="Choose your location and book an Anat Baniel Method NeuroMovement session with Heidi Rood via Cal.com.">
+<meta name="description" content="Sign in and book a session for yourself or your child.">
 <link rel="canonical" href="https://healwithmovement.com/book.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Book a Session | Heal with Movement">
-<meta property="og:description" content="Choose your location and book an Anat Baniel Method NeuroMovement session with Heidi Rood via Cal.com.">
+<meta property="og:description" content="Sign in and book a session for yourself or your child.">
 <meta property="og:url" content="https://healwithmovement.com/book.html">
 <meta property="og:image" content="https://healwithmovement.com/assets/img/og-image.jpg">
 <meta property="og:site_name" content="Heal with Movement">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Book a Session | Heal with Movement">
-<meta name="twitter:description" content="Choose your location and book an Anat Baniel Method NeuroMovement session with Heidi Rood via Cal.com.">
+<meta name="twitter:description" content="Sign in and book a session for yourself or your child.">
 <meta name="twitter:image" content="https://healwithmovement.com/assets/img/og-image.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
@@ -29,7 +29,7 @@
 
 <!-- Privacy-friendly analytics placeholder: swap data-domain / src for your Plausible or Cloudflare Web Analytics snippet -->
 <script defer data-domain="healwithmovement.com" src="https://plausible.io/js/script.js" data-placeholder="true"></script>
-<script src="https://app.cal.com/embed/embed.js" async></script>
+<meta name="robots" content="noindex"><link rel="stylesheet" href="/css/portal.css?v=fe4fe46245a0">
 </head>
 <body class="page-interior">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -52,7 +52,6 @@
                scaffold (main.js data-lang handler, .lang-toggle CSS) is kept
                in the codebase, unreferenced, to re-enable later. See
                PLACEHOLDERS.md. -->
-          <a class="btn btn-ghost btn-small" href="/intake.html">Child Intake</a>
           <a class="btn btn-primary btn-small" href="/book.html">Book a Session</a>
         </li>
       </ul>
@@ -67,37 +66,16 @@
 </header>
 <main id="main">
 
-<section class="section">
-  <div class="wrap">
-    <p class="eyebrow">Book</p>
-    <h1>Book a session</h1>
-    <p style="max-width:60ch; color:var(--c-ink-soft);">First, choose where you'd like to work together. If you're booking for a child's first session, please complete the <a href="/intake.html">intake form</a> first, Heidi reviews it before your first lesson.</p>
-
-    <div class="loc-grid" id="location-chooser" role="group" aria-label="Choose a location">
-      <button class="loc-card" type="button" data-cal-key="vermont" aria-pressed="false">
-        <h3>Chittenden County, VT</h3>
-        <p>In-person private lesson</p>
-      </button>
-      <button class="loc-card" type="button" data-cal-key="montreal" aria-pressed="false">
-        <h3>Montreal, QC</h3>
-        <p>In-person private lesson</p>
-      </button>
-      <button class="loc-card" type="button" data-cal-key="virtual" aria-pressed="false">
-        <h3>Virtual</h3>
-        <p>Live group class, online</p>
-      </button>
-    </div>
-
-    <div id="child-notice" class="skip-note" style="margin-top:1.5em; display:none;">
-      Booking for a child? Please complete the <a href="/intake.html">child intake form</a> before your first session, Heidi reviews every intake before meeting a new child client.
-    </div>
-
-    <div id="cal-embed-container" style="margin-top:2em;" aria-live="polite">
-      <p style="padding:32px; color:var(--c-ink-soft);">Select a location above to load available times.</p>
-    </div>
+<section class="section portal-section">
+ <div class="wrap portal-shell">
+  <div class="portal-heading"><p class="eyebrow">Your next step</p><h1>Move toward<br><em>feeling better.</em></h1><p class="lede">Your sessions, your family, one simple place.</p></div>
+  <div class="portal-panel" id="portal" aria-busy="true">
+   <p id="portal-status" role="status" aria-live="polite">Loading your account…</p>
+   <div id="portal-screen"></div>
   </div>
+ </div>
 </section>
-
+<noscript><p class="wrap">Please enable JavaScript to sign in and book, or <a href="/contact.html">contact Heidi</a> for help.</p></noscript>
 </main>
 <footer class="site-footer">
   <div class="footer-close">
@@ -106,7 +84,6 @@
       <h2>Small movements. Real change.</h2>
       <div class="hero-cta">
         <a class="btn btn-primary" href="/book.html">Book a Session</a>
-        <a class="btn btn-ghost" href="/intake.html" style="color:#F3ECF5; border-color:rgba(243,236,245,.4)">Child Intake Form</a>
       </div>
     </div>
   </div>
@@ -140,7 +117,7 @@
           <h4>Get started</h4>
           <ul>
             <li><a href="/book.html">Book a session</a></li>
-            <li><a href="/intake.html">Child intake form</a></li>
+            <li><a href="/account.html">My account</a></li>
             <li><a href="/contact.html">Contact</a></li>
           </ul>
         </div>
@@ -165,6 +142,6 @@
 </footer>
 <script src="/js/config.js"></script>
 <script src="/js/main.js" defer></script>
-<script src="/js/booking.js" defer></script>
+<script src="/js/portal.js?v=fe4fe46245a0" type="module"></script>
 </body>
 </html>

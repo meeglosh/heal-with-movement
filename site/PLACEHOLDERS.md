@@ -9,9 +9,7 @@ occurrence.
 | Token | Where it appears | Needed |
 |---|---|---|
 | `{{PRICE}}` | services.html (x3), JSON-LD `priceRange` | Session price for Vermont private, Montreal private, virtual group |
-| `{{DURATION}}` | services.html (x3) | Session length per service |
-| `{{GROUP_SEATS}}` | services.html | Max seats per virtual group class (for Cal.com "seats" config) |
-| `{{CANCELLATION_HOURS}}` | services.html, cancellation.html, intake.html | Notice window in hours. **Note:** the original intake form doc states "24 hours" for missed/cancelled appointments — this has been used as the working default in copy, but confirm it applies to every service (private VT/Montreal, virtual group) before removing the placeholder. |
+| `{{CANCELLATION_HOURS}}` | services.html, cancellation.html, protected intake form | Notice window in hours. **Note:** the original intake form doc states "24 hours" for missed/cancelled appointments — this has been used as the working default in copy, but confirm it applies to every service (private VT/Montreal, virtual group) before removing the placeholder. |
 
 ## Contact & legal
 
@@ -28,14 +26,10 @@ occurrence.
 
 | Token | Where it appears | Needed |
 |---|---|---|
-| `healwithmovement/vermont-private`, `healwithmovement/montreal-private`, `healwithmovement/virtual-group` | `js/config.js` | Real Cal.com event type calLinks once created |
-| `{{TURNSTILE_SITE_KEY}}` | intake.html, `js/config.js` | Cloudflare Turnstile **site key** (public) |
-| `TURNSTILE_SECRET` env var | `functions/api/intake.js` | Cloudflare Turnstile **secret key**, set in Pages project settings |
-| `RESEND_API_KEY` env var | `functions/api/intake.js` | Resend API key, set in Pages project settings |
-| `INTAKE_TO_EMAIL` env var | `functions/api/intake.js` | Defaults to heidi@healwithmovement.com if unset — confirm |
+| Booking backend | Pages runtime secrets | Neon Auth, encryption key, Cal.com API key and event IDs; see DEPLOY.md |
 | Plausible/Cloudflare Web Analytics snippet | every page `<head>` (via `build.mjs`) | Currently a placeholder Plausible script tag (`data-placeholder="true"`) pointing at `healwithmovement.com` — swap for the real analytics snippet or remove |
 | Newsletter form | footer, every page | Currently a non-functional placeholder (`onsubmit="return false;"`) — wire to Mailchimp/Buttondown/ConvertKit etc. |
-| Contact form | contact.html | Currently a non-functional placeholder — wire to a Pages Function (mirror `functions/api/intake.js`) or a form service |
+| Contact form | contact.html | Currently a non-functional placeholder — wire to a Pages Function or a form service |
 
 ## Content
 
@@ -57,14 +51,6 @@ data was downloaded once from the `@phosphor-icons/core` package via jsdelivr
 and inlined directly in `build.mjs` (`PHOSPHOR_PATHS`), so the site has no
 runtime dependency on an icon font or package.
 
-## Booking → intake flow (decision made, documented here per task instructions)
+## Booking and child intake
 
-**Approach chosen:** the Book page links to the intake form from a visible
-notice ("Booking for a child? Complete the intake form first...") shown once a
-location is selected, and the main nav / hero always offer a direct "Child
-Intake" link alongside "Book a Session." This was chosen over gating the
-Cal.com embed behind the form because Cal.com's own post-booking confirmation
-page/email is also a natural place to add the intake link — once the real
-Cal.com event types exist, add the intake URL to each event type's
-confirmation page redirect or a custom email step (see DEPLOY.md → Cal.com
-setup) so parents who skip the notice still get prompted after booking.
+Parents sign in once on the website. The server exposes intake only inside a child booking flow, once for each child. Completed intake remains on file for future bookings. Direct intake routes redirect to booking; do not add public intake links or email intake answers. See DEPLOY.md for Neon, staff access, and Cal.com configuration.

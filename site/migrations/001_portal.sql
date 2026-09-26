@@ -1,0 +1,10 @@
+CREATE TABLE portal_users (id text PRIMARY KEY, name text NOT NULL, email text NOT NULL);
+CREATE TABLE children (id uuid PRIMARY KEY, guardian_id text NOT NULL REFERENCES portal_users(id), name text NOT NULL, birth_date date NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(guardian_id,name,birth_date));
+CREATE INDEX children_guardian_idx ON children(guardian_id);
+CREATE TABLE intakes (child_id uuid PRIMARY KEY REFERENCES children(id), guardian_id text NOT NULL REFERENCES portal_users(id), encrypted_payload text NOT NULL, version integer NOT NULL DEFAULT 1, completed_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE booking_flows (id uuid PRIMARY KEY, user_id text NOT NULL REFERENCES portal_users(id), child_id uuid REFERENCES children(id), service text NOT NULL CHECK(service IN ('vermont','montreal','virtual')), expires_at timestamptz NOT NULL DEFAULT now()+interval '24 hours', created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX flows_user_idx ON booking_flows(user_id);
+CREATE TABLE bookings (id uuid PRIMARY KEY, flow_id uuid NOT NULL UNIQUE REFERENCES booking_flows(id), user_id text NOT NULL REFERENCES portal_users(id), child_id uuid REFERENCES children(id), service text NOT NULL, event_type_id integer NOT NULL, start_at timestamptz NOT NULL, time_zone text NOT NULL, cal_uid text, status text NOT NULL DEFAULT 'creating', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX bookings_user_idx ON bookings(user_id);
+CREATE TABLE audit_events (id uuid PRIMARY KEY, actor_id text NOT NULL REFERENCES portal_users(id), action text NOT NULL, child_id uuid REFERENCES children(id), created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE api_limits (key text PRIMARY KEY, count integer NOT NULL, expires_at timestamptz NOT NULL);
