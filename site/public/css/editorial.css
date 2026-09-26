@@ -81,7 +81,7 @@ h3{font-size:clamp(1.5rem,2.3vw,2.1rem);font-weight:400;line-height:1.18;letter-
 .page-interior .quote-card q{font-size:1.6rem;font-weight:300;line-height:1.4}
 .faq-item summary{padding-block:28px;font-size:1.35rem;font-weight:400}
 .faq-item p{max-width:65ch}
-input[type="text"],input[type="email"],input[type="tel"],input[type="date"],textarea,select{background:var(--c-canvas);border-color:#bcb1bc;padding:14px}
+input:not([type]),input[type="text"],input[type="email"],input[type="tel"],input[type="date"],textarea,select{background:var(--c-canvas);border-color:#bcb1bc;padding:14px}
 fieldset{padding:28px;background:var(--c-surface)}
 .loc-card{background:transparent;border-color:#bcb1bc;padding:32px}
 .loc-card[aria-pressed="true"]{background:#ebe3eb}

@@ -83,11 +83,12 @@ function on(selector, fn, event = "click") {
     }
   });
 }
-function render(html) {
+function render(html, { focusHeading = true } = {}) {
   screen.innerHTML = html;
   root.setAttribute("aria-busy", "false");
-  screen.querySelector("h2")?.setAttribute("tabindex", "-1");
-  screen.querySelector("h2")?.focus();
+  const heading = screen.querySelector("h2");
+  heading?.setAttribute("tabindex", "-1");
+  if (focusHeading) heading?.focus();
 }
 function toolbar() {
   return `<div class="portal-toolbar"><span class="muted">${escape(me.user.email)}</span><button class="portal-link" id="account-home">My account</button><button class="portal-link" id="sign-out">Sign out</button></div>`;
@@ -105,9 +106,10 @@ function wireToolbar() {
     signIn();
   });
 }
-function signIn() {
+function signIn({ focusHeading = true } = {}) {
   render(
     `<p class="eyebrow">Welcome</p><h2>A little space<br>for you.</h2><p>Sign in or create your account with an email code. No password to remember.</p><form id="sign-in-form"><div class="field"><label for="parent-name">Your name</label><input id="parent-name" name="name" autocomplete="name" maxlength="200" value="${escape(name)}" required></div><div class="field"><label for="parent-email">Email address</label><input id="parent-email" name="email" type="email" autocomplete="email" value="${escape(email)}" required></div><button class="btn btn-primary" type="submit">Send sign-in code</button></form><p class="muted" style="margin-top:24px">Your account lets you book for yourself or your children and keeps completed intake on file.</p>`,
+    { focusHeading },
   );
   on(
     "#sign-in-form",
@@ -494,7 +496,7 @@ async function load() {
   message();
   try {
     const session = await api("/api/auth/get-session");
-    if (!session?.user) return signIn();
+    if (!session?.user) return signIn({ focusHeading: false });
     me = await api("/api/portal/me");
     const flowId = new URLSearchParams(location.search).get("flow");
     if (flowId) {
@@ -504,7 +506,7 @@ async function load() {
     if (location.pathname.includes("account")) return await dashboard();
     choosePerson();
   } catch (e) {
-    if (!me) signIn();
+    if (!me) signIn({ focusHeading: false });
     else choosePerson();
     message(e.message, true);
   } finally {

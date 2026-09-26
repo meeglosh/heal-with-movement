@@ -327,7 +327,7 @@ p{margin:0 0 1.1em; overflow-wrap:break-word}
 .field{margin-bottom:1.3em; min-width:0}
 .field label{display:block; font-weight:600; font-size:.88rem; margin-bottom:.4em}
 .field .hint{font-size:.8rem; color:var(--c-ink-soft); margin-top:.3em}
-input[type="text"],input[type="email"],input[type="tel"],input[type="date"],textarea,select{
+input:not([type]),input[type="text"],input[type="email"],input[type="tel"],input[type="date"],textarea,select{
   width:100%; padding:.85em 1em; border:1px solid var(--c-line); border-radius:var(--radius);
   background:var(--c-surface); color:var(--c-ink); font-family:var(--font-text); font-size:1rem;
 }

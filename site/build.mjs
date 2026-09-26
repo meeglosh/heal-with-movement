@@ -7,6 +7,12 @@ import { createHash } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SITE_URL = "https://healwithmovement.com"; // update at deploy if domain differs
+const stylesVersion = createHash("sha256")
+  .update(readFileSync(join(__dirname, "public/css/styles.css")))
+  .digest("hex").slice(0, 12);
+const editorialVersion = createHash("sha256")
+  .update(readFileSync(join(__dirname, "public/css/editorial.css")))
+  .digest("hex").slice(0, 12);
 
 const NAV = [
   ["/about.html", "About"],
@@ -42,8 +48,8 @@ function head({ title, description, path, ogImage = "/assets/img/og-image.jpg", 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..600,0..100,0..1;1,9..144,300..600,0..100,0..1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/editorial.css">
+<link rel="stylesheet" href="/css/styles.css?v=${stylesVersion}">
+<link rel="stylesheet" href="/css/editorial.css?v=${editorialVersion}">
 ${jsonLd}
 <!-- Privacy-friendly analytics placeholder: swap data-domain / src for your Plausible or Cloudflare Web Analytics snippet -->
 <script defer data-domain="healwithmovement.com" src="https://plausible.io/js/script.js" data-placeholder="true"></script>
