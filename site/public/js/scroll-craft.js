@@ -74,22 +74,13 @@
       });
     }
 
-    // ---------------- Science section: overlapping photos entrance ----------------
-    // Not pinned. Scrubbed over the section scrolling into view: the main
-    // frame wipes open (clip-path inset) while its inner img settles from a
-    // slight zoom (parallax depth); the inset photo arrives a beat later
-    // from an offset with its own settle + fade, then keeps drifting a
-    // little further (counter-parallax) as the section continues past.
+    // Science section: reveal and gently settle the field photograph.
     var scienceMedia = document.getElementById("science-media");
     var scienceMainFrame = document.getElementById("science-main-frame");
     var scienceMainImg = document.getElementById("science-main-img");
-    var scienceInsetImg = document.getElementById("science-inset-img");
 
-    if (scienceMedia && scienceMainFrame && scienceMainImg && scienceInsetImg) {
+    if (scienceMedia && scienceMainFrame && scienceMainImg) {
       var clipMax = isMobile ? 8 : 12;
-      var insetXOffset = isMobile ? -16 : -30;
-      var insetYOffset = isMobile ? 34 : 60;
-      var insetDrift = isMobile ? -10 : -20;
 
       ScrollTrigger.create({
         trigger: scienceMedia,
@@ -104,14 +95,6 @@
             "inset(" + clip + "% " + clip + "% " + clip + "% " + clip + "%)";
           scienceMainImg.style.transform = "scale(" + (1.15 - 0.15 * p) + ")";
 
-          // Inset photo: arrives late (p 0.2 to 0.8), then a small
-          // continued upward drift through the tail of the range (p 0.8-1).
-          var ip = Math.min(1, Math.max(0, (p - 0.2) / 0.6));
-          var tail = Math.min(1, Math.max(0, (p - 0.8) / 0.2));
-          scienceInsetImg.style.opacity = String(ip);
-          var ty = insetYOffset * (1 - ip) + insetDrift * tail;
-          var tx = insetXOffset * (1 - ip);
-          scienceInsetImg.style.transform = "translate(" + tx + "px, " + ty + "px)";
         },
       });
     }
