@@ -67,7 +67,7 @@ Cal.com event types use a recipient-neutral `customName` so meeting and calendar
 
 Use the GAPCO LLC Cloudflare account and Pages project `heal-with-movement`. Git build settings: root `site`, build command `npm run build`, output `public`, production branch `main`. Install npm dependencies including build dependencies. `nodejs_compat` is configured in `wrangler.toml`.
 
-Before publishing, apply `005_virtual_private.sql` and any other pending migrations to the production database using its connection, add both `CAL_VIRTUAL_PRIVATE_EVENT_ID` and `CAL_VIRTUAL_PRIVATE_CHILD_EVENT_ID` with the event IDs above, add runtime secrets, configure trusted domains and the webhook, and resolve the existing legal/pricing placeholders. Migration `005_virtual_private.sql` and the two event IDs have only been applied to the `dev-client-booking` branch so far. Run the tests and Worker bundle check:
+Production booking is configured on the `production` Neon branch and Pages environment. Migrations `001_portal.sql` through `005_virtual_private.sql` are applied there; both private-lesson event IDs, the runtime bindings, the canonical trusted origin, and the signed Cal.com webhook are configured. The ignored `site/.env.production` file is a mode-600 local backup of the production secret values; keep it out of version control and back it up securely before replacing this machine. To deploy future changes, keep production bindings and database schema in sync, then run the tests and Worker bundle check:
 
 ```sh
 npm test

@@ -1,5 +1,11 @@
 export async function onRequest(context) {
-  const url = new URL(context.request.url);
+  const { request } = context;
+  const url = new URL(request.url);
+  if (url.hostname === "www.healwithmovement.com") {
+    url.hostname = "healwithmovement.com";
+    url.protocol = "https:";
+    return Response.redirect(url, 308);
+  }
   if (["/intake", "/intake.html"].includes(url.pathname))
     return new Response(null, {
       status: 303,
