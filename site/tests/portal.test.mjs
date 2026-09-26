@@ -588,3 +588,108 @@ test("adult and child reviews recur after six calendar months and cannot bypass 
     assert.equal((await data(`/flows/${flow.id}`)).reviewDue, false);
   }
 });
+
+test("turning 18 overrides a current child intake and requires an independent adult account", async () => {
+  await db.query("DELETE FROM api_limits");
+  const { isAdult, adultBirthday, easternDate } =
+    await import("../server/age.js");
+  assert.equal(isAdult("2008-09-26", "2026-09-25"), false);
+  assert.equal(isAdult("2008-09-26", "2026-09-26"), true);
+  assert.equal(adultBirthday("2008-02-29"), "2026-02-28");
+  assert.equal(easternDate(new Date("2026-09-26T03:59:00Z")), "2026-09-25");
+  const [child] = await db.query("SELECT child_id FROM intakes LIMIT 1");
+  const flow = await data("/flows", {
+    service: "vermont",
+    childId: child.child_id,
+  });
+  const [date] = await db.query(
+    "SELECT ((now() AT TIME ZONE 'America/New_York')::date - interval '18 years')::date::text AS birthday",
+  );
+  await db.query("UPDATE children SET birth_date=$2 WHERE id=$1", [
+    child.child_id,
+    date.birthday,
+  ]);
+  for (const action of ["", "/intake", "/slots"])
+    await assert.rejects(
+      request(`/flows/${flow.id}${action}`),
+      (e) => e.status === 403,
+    );
+  await assert.rejects(
+    request(`/flows/${flow.id}/intake`, { unchanged: true, reviewVersion: 1 }),
+    (e) => e.status === 403,
+  );
+  await assert.rejects(
+    request(`/flows/${flow.id}/book`, {
+      start: new Date(Date.now() + 86400000).toISOString(),
+      timeZone: "UTC",
+      name: "Parent",
+    }),
+    (e) => e.status === 403,
+  );
+  await assert.rejects(
+    request("/flows", { service: "vermont", childId: child.child_id }),
+    (e) => e.status === 403,
+  );
+  await assert.rejects(
+    request("/children", { name: "Adult", birthDate: date.birthday }),
+    (e) => e.status === 400,
+  );
+  const account = await data("/me");
+  assert.equal(
+    account.children.find((c) => c.id === child.child_id).adultAccountRequired,
+    true,
+  );
+  assert.ok(!account.reviews.some((r) => r.id === child.child_id));
+  // Their own verified account starts with adult intake, independent of the parent's records.
+  const adult = {
+    id: "new-adult",
+    name: "Adult",
+    email: "adult@example.invalid",
+    emailVerified: true,
+  };
+  const own = await data(
+    "/flows",
+    { service: "vermont", childId: null },
+    adult,
+  );
+  assert.equal(own.needsIntake, true);
+  const form = await data(`/flows/${own.id}/intake`, undefined, adult);
+  assert.match(form.html, /Release of liability/);
+  assert.equal(form.answers, null);
+});
+
+test("parents cannot reserve child appointments on or after a future eighteenth birthday", async () => {
+  await db.query("DELETE FROM api_limits");
+  const [child] = await db.query("SELECT child_id FROM intakes LIMIT 1");
+  const [dates] = await db.query(
+    "SELECT ((now() AT TIME ZONE 'America/New_York')::date+1-interval '18 years')::date::text AS birth, ((now() AT TIME ZONE 'America/New_York')::date+1)::text AS birthday",
+  );
+  await db.query("UPDATE children SET birth_date=$2 WHERE id=$1", [
+    child.child_id,
+    dates.birth,
+  ]);
+  const flow = await data("/flows", {
+    service: "vermont",
+    childId: child.child_id,
+  });
+  const start = dates.birthday + "T16:00:00Z";
+  const query = new URLSearchParams({
+    start: new Date().toISOString(),
+    end: new Date(Date.now() + 7 * 86400000).toISOString(),
+  });
+  const slots = await request(
+    `/flows/${flow.id}/slots?${query}`,
+    undefined,
+    user,
+    { cal: { ...cal, slots: async () => ({ [dates.birthday]: [{ start }] }) } },
+  );
+  assert.deepEqual((await slots.json()).slots[dates.birthday], []);
+  await assert.rejects(
+    request(`/flows/${flow.id}/book`, {
+      start,
+      timeZone: "America/New_York",
+      name: "Parent",
+    }),
+    (e) => e.status === 403,
+  );
+});

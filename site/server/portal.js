@@ -1,3 +1,4 @@
+import { isAdult, easternDate } from "./age.js";
 import { json, readJSON, checkOrigin, HttpError } from "./http.js";
 import { encryptIntake, decryptIntake, verifySignature } from "./crypto.js";
 import { eventId, validateEvent } from "./cal.js";
@@ -47,6 +48,11 @@ export async function ownedFlow(db, userId, flowId) {
       404,
       "This booking has expired or could not be found. Please start again.",
     );
+  if (flow.child_id && isAdult(flow.birth_date))
+    throw new HttpError(
+      403,
+      "At 18, clients must use their own account, complete adult intake, and book for themselves.",
+    );
   return flow;
 }
 function publicFlow(f) {
@@ -84,7 +90,7 @@ export async function portal(request, env, { db, auth, cal }) {
   await limit(db, user.id, request.method === "GET" ? 120 : 30);
   if (path === "/me" && request.method === "GET") {
     const children = await db.query(
-      "SELECT c.id,c.name,c.birth_date,i.completed_at FROM children c LEFT JOIN intakes i ON i.child_id=c.id WHERE c.guardian_id=$1 ORDER BY c.created_at",
+      "SELECT c.id,c.name,c.birth_date::text AS birth_date,i.completed_at FROM children c LEFT JOIN intakes i ON i.child_id=c.id WHERE c.guardian_id=$1 ORDER BY c.created_at",
       [user.id],
     );
     const bookings = await db.query(
@@ -116,7 +122,11 @@ export async function portal(request, env, { db, auth, cal }) {
       [user.id],
     );
     return json({
-      reviews,
+      reviews: reviews.filter(
+        (r) =>
+          r.kind === "adult" ||
+          !isAdult(children.find((c) => c.id === r.id).birth_date),
+      ),
       user: { name: user.name, email: user.email },
       staff: isStaff(user, env),
       children: children.map((c) => ({
@@ -124,12 +134,18 @@ export async function portal(request, env, { db, auth, cal }) {
         name: c.name,
         birthDate: c.birth_date,
         intakeComplete: !!c.completed_at,
+        adultAccountRequired: isAdult(c.birth_date),
       })),
       bookings: bookings.map(publicBooking),
     });
   }
   if (path === "/children" && request.method === "POST") {
     const value = parse(childInput, await readJSON(request));
+    if (isAdult(value.birthDate))
+      throw new HttpError(
+        400,
+        "Clients aged 18 or older must create their own account and book for themselves.",
+      );
     const [child] = await db.query(
       `INSERT INTO children(id,guardian_id,name,birth_date) VALUES($1,$2,$3,$4) ON CONFLICT(guardian_id,name,birth_date) DO UPDATE SET name=EXCLUDED.name RETURNING id,name,birth_date`,
       [crypto.randomUUID(), user.id, value.name, value.birthDate],
@@ -140,10 +156,15 @@ export async function portal(request, env, { db, auth, cal }) {
     const value = parse(flowInput, await readJSON(request));
     if (value.childId) {
       const [child] = await db.query(
-        "SELECT id FROM children WHERE id=$1 AND guardian_id=$2",
+        "SELECT id,birth_date::text AS birth_date FROM children WHERE id=$1 AND guardian_id=$2",
         [value.childId, user.id],
       );
       if (!child) throw new HttpError(404, "Child profile not found.");
+      if (isAdult(child.birth_date))
+        throw new HttpError(
+          403,
+          "This client is now 18 or older and must book through their own account with adult intake.",
+        );
     }
     const [flow] = await db.query(
       "INSERT INTO booking_flows(id,user_id,child_id,service) VALUES($1,$2,$3,$4) RETURNING id",
@@ -303,13 +324,34 @@ export async function portal(request, env, { db, auth, cal }) {
           throw new HttpError(400, "Choose a date range of up to two weeks.");
         const data = await cal.slots(eid, start, end, tz);
         return json({
-          slots: data,
+          slots: flow.child_id
+            ? Object.fromEntries(
+                Object.entries(data).map(([day, slots]) => [
+                  day,
+                  slots.filter(
+                    (slot) =>
+                      !isAdult(
+                        flow.birth_date,
+                        easternDate(new Date(slot.start)),
+                      ),
+                  ),
+                ]),
+              )
+            : data,
           duration: event.lengthInMinutes,
           title: event.title,
         });
       }
       if (action === "book" && request.method === "POST") {
         const input = parse(bookingInput, await readJSON(request));
+        if (
+          flow.child_id &&
+          isAdult(flow.birth_date, easternDate(new Date(input.start)))
+        )
+          throw new HttpError(
+            403,
+            "Appointments on or after the 18th birthday must be booked by the adult through their own account.",
+          );
         if (Date.parse(input.start) <= Date.now())
           throw new HttpError(400, "Please choose a future appointment.");
         const [existing] = await db.query(

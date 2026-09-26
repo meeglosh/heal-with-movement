@@ -144,7 +144,15 @@ function codeScreen() {
 async function dashboard() {
   me = await api("/api/portal/me");
   render(
-    `${toolbar()}<h2>Your account.</h2><p>Welcome, ${escape(me.user.name)}.</p>${me.reviews?.length ? `<p class="portal-review-notice">Intake review due for ${me.reviews.map((r) => escape(r.kind === "adult" ? "you" : r.name)).join(", ")}. Please review your saved answers.</p><div class="portal-options">${me.reviews.map((r, i) => `<button class="portal-choice" data-review="${i}">Review ${r.kind === "adult" ? "your intake" : escape(r.name) + "’s intake"}</button>`).join("")}</div>` : ""}<button class="btn btn-primary" id="new-booking">Book a Session</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review intake</button>' : ""}`,
+    `${toolbar()}<h2>Your account.</h2><p>Welcome, ${escape(me.user.name)}.</p>${me.children
+      .filter((c) => c.adultAccountRequired)
+      .map(
+        (c) =>
+          `<p class="muted">${escape(c.name)} is now 18 or older. Future bookings and adult intake must be completed through their own account.</p>`,
+      )
+      .join(
+        "",
+      )}${me.reviews?.length ? `<p class="portal-review-notice">Intake review due for ${me.reviews.map((r) => escape(r.kind === "adult" ? "you" : r.name)).join(", ")}. Please review your saved answers.</p><div class="portal-options">${me.reviews.map((r, i) => `<button class="portal-choice" data-review="${i}">Review ${r.kind === "adult" ? "your intake" : escape(r.name) + "’s intake"}</button>`).join("")}</div>` : ""}<button class="btn btn-primary" id="new-booking">Book a Session</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review intake</button>' : ""}`,
   );
   wireToolbar();
   on("#new-booking", () => {
@@ -166,7 +174,21 @@ async function dashboard() {
 function choosePerson() {
   flow = null;
   render(
-    `${toolbar()}<p class="eyebrow">Book a Session</p><h2>Who is this for?</h2><div class="portal-options"><button class="portal-choice" data-person="self"><strong>Myself</strong><small>A session for you</small></button>${me.children.map((c) => `<button class="portal-choice" data-person="${escape(c.id)}"><strong>${escape(c.name)}</strong><small>${c.intakeComplete ? "Intake on file" : "First booking — intake needed"}</small></button>`).join("")}<button class="portal-choice" data-person="new"><strong>Add a child</strong><small>Book their first session</small></button></div>`,
+    `${toolbar()}<p class="eyebrow">Book a Session</p><h2>Who is this for?</h2><div class="portal-options"><button class="portal-choice" data-person="self"><strong>Myself</strong><small>A session for you</small></button>${me.children
+      .filter((c) => !c.adultAccountRequired)
+      .map(
+        (c) =>
+          `<button class="portal-choice" data-person="${escape(c.id)}"><strong>${escape(c.name)}</strong><small>${c.intakeComplete ? "Intake on file" : "First booking — intake needed"}</small></button>`,
+      )
+      .join("")}${me.children
+      .filter((c) => c.adultAccountRequired)
+      .map(
+        (c) =>
+          `<p class="muted"><strong>${escape(c.name)}</strong> is now 18 or older and must create their own account, complete adult intake, and book for themselves.</p>`,
+      )
+      .join(
+        "",
+      )}<button class="portal-choice" data-person="new"><strong>Add a child</strong><small>Book their first session</small></button></div>`,
   );
   wireToolbar();
   screen.querySelectorAll("[data-person]").forEach((b) =>
