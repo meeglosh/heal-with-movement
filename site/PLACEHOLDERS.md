@@ -8,7 +8,7 @@ occurrence.
 
 | Token | Where it appears | Needed |
 |---|---|---|
-| `{{PRICE}}` | services.html (x3), JSON-LD `priceRange` | Session price for Vermont private, Montreal private, virtual group |
+| `{{PRICE}}` | services.html (x3), JSON-LD `priceRange` | Session price for Vermont private, Montreal private, virtual group; virtual private price is shown as “Price to be confirmed” |
 | `{{CANCELLATION_HOURS}}` | services.html, cancellation.html, protected intake form | Notice window in hours. **Note:** the original intake form doc states "24 hours" for missed/cancelled appointments — this has been used as the working default in copy, but confirm it applies to every service (private VT/Montreal, virtual group) before removing the placeholder. |
 
 ## Contact & legal
@@ -35,7 +35,7 @@ occurrence.
 
 | Item | Where | Needed |
 |---|---|---|
-| Heidi's personal bio / training history / certification dates / headshot | about.html | The source docx did not include a first-person biography — only the ABM method description. Replace the "Placeholder for Heidi's review" block. |
+| Heidi's personal bio / training history / certification dates | about.html | The source docx did not include a first-person biography — only the ABM method description. Add Heidi's training history and certification details when available; her portrait is now in place. |
 | Hero image | `public/assets/img/hero-1672.*`, `hero-1000.*` | Real photography is already in place (a licensed still, not a placeholder). An earlier hero-video pipeline was removed at the user's request; the encoded clips are kept for reference only in `site/_unused/video/` (not deployed). |
 | `favicon.ico` | `public/favicon.ico` | Resolved — regenerated as a proper multi-size (16/32/48/64px) .ico from the brand mark. |
 | French translations | all pages | The EN/FR toggle has been removed from the visible header (desktop and mobile menu) at the user's request, since there's no French copy yet. The underlying scaffold is still in the codebase, just unreferenced: `public/js/main.js` still has the `data-lang` click handler (persists choice to `localStorage`, swaps the `lang` attribute), and `.lang-toggle`/`.lang-toggle button` styles are still in `public/css/styles.css`. **Re-enable later** by adding the `.lang-toggle` markup back into `header()` in `build.mjs` (was in both `.nav-actions` and the mobile `.nav-mobile-only` block) once French copy exists. |

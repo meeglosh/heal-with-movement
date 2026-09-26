@@ -1,7 +1,12 @@
 import { adultConditions } from "./adult-intake-fields.js";
 import { z } from "zod";
 export const id = z.uuid();
-export const service = z.enum(["vermont", "montreal", "virtual"]);
+export const service = z.enum([
+  "montreal",
+  "vermont",
+  "virtual_private",
+  "virtual",
+]);
 const short = z.string().trim().min(1).max(200);
 export const birthDate = z.iso
   .date()

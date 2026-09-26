@@ -6,6 +6,7 @@ const root = document.getElementById("portal");
 const labels = {
   montreal: "Montreal Private Lesson",
   vermont: "Vermont Private Lesson",
+  virtual_private: "Virtual Private Lesson",
   virtual: "Virtual Group Class",
 };
 let me,

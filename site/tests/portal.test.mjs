@@ -8,12 +8,16 @@ import {
   decryptIntake,
   verifySignature,
 } from "../server/crypto.js";
-import { validateEvent } from "../server/cal.js";
+import { eventId, validateEvent } from "../server/cal.js";
 const env = {
   APP_ORIGIN: "https://test.invalid",
   INTAKE_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
   CAL_VERMONT_EVENT_ID: "1",
   CAL_VERMONT_CHILD_EVENT_ID: "2",
+  CAL_VIRTUAL_EVENT_ID: "100",
+  CAL_VIRTUAL_CHILD_EVENT_ID: "100",
+  CAL_VIRTUAL_PRIVATE_EVENT_ID: "101",
+  CAL_VIRTUAL_PRIVATE_CHILD_EVENT_ID: "102",
   STAFF_EMAILS: "staff@example.invalid",
 };
 const pg = new PGlite();
@@ -25,13 +29,23 @@ const user = {
   emailVerified: true,
 };
 let calls = 0;
+let observedEventId;
+let observedSlotEventId;
+let observedBookingEventId;
 const cal = {
-  event: async () => ({
+  event: async (id) => {
+    observedEventId = id;
+    return ({
     confirmationPolicy: { type: "always", disabled: false },
-  }),
-  slots: async () => ({}),
-  create: async () => {
+    });
+  },
+  slots: async (id) => {
+    observedSlotEventId = id;
+    return {};
+  },
+  create: async (booking) => {
     calls++;
+    observedBookingEventId = booking.eventTypeId;
     return { uid: "cal-" + calls, status: "pending" };
   },
   confirm: async () => {
@@ -63,6 +77,7 @@ before(async () => {
     "002_booking_seats.sql",
     "003_adult_intakes.sql",
     "004_intake_reviews.sql",
+    "005_virtual_private.sql",
   ])
     await pg.exec(
       await readFile(new URL("../migrations/" + file, import.meta.url), "utf8"),
@@ -433,6 +448,134 @@ test("Cal offset slots normalize to UTC and child group requires authenticated A
   );
 });
 
+test("virtual private adult and child events share the correct IDs and intake gate", async () => {
+  assert.equal(eventId(env, "virtual_private", false), 101);
+  assert.equal(eventId(env, "virtual_private", true), 102);
+  assert.equal(eventId(env, "virtual", false), 100);
+  assert.equal(eventId(env, "virtual", true), 100);
+  const { flowInput } = await import("../server/validation.js");
+  assert.equal(
+    flowInput.parse({ service: "virtual_private", childId: null }).service,
+    "virtual_private",
+  );
+  assert.throws(() => flowInput.parse({ service: "unlisted", childId: null }));
+
+  const virtualUser = {
+    id: "virtual-private-parent",
+    email: "virtual-parent@example.invalid",
+    name: "Virtual Parent",
+    emailVerified: true,
+  };
+
+  const { child } = await data("/children", {
+    name: "Virtual Child",
+    birthDate: "2020-01-01",
+  }, virtualUser);
+  const flow = await data("/flows", {
+    service: "virtual_private",
+    childId: child.id,
+  }, virtualUser);
+  assert.equal(flow.service, "virtual_private");
+  assert.equal(flow.needsIntake, true);
+  const values = {
+    clientName: "Forged",
+    birthDate: "2019-01-01",
+    guardianName: "Parent",
+    address: "1 Main",
+    city: "City",
+    province: "QC",
+    postalCode: "H0H 0H0",
+    email: "forged@example.invalid",
+    preferredPhone: "cell",
+    reason: "Virtual private lesson intake",
+    hasTubes: "no",
+    consent: "on",
+    signature: "Parent",
+    signDate: new Date().toISOString().slice(0, 10),
+  };
+  await data(`/flows/${flow.id}/intake`, values, virtualUser);
+  const repeat = await data("/flows", {
+    service: "virtual_private",
+    childId: child.id,
+  }, virtualUser);
+  assert.equal(repeat.needsIntake, false);
+
+  const start = new Date(Date.now() + 172800000).toISOString();
+  const end = new Date(Date.now() + 345600000).toISOString();
+  await data(
+    `/flows/${flow.id}/slots?${new URLSearchParams({
+      start,
+      end,
+      timeZone: "America/New_York",
+    })}`,
+    undefined,
+    virtualUser,
+  );
+  assert.equal(observedEventId, 102);
+  assert.equal(observedSlotEventId, 102);
+  const result = await data(`/flows/${flow.id}/book`, {
+    start,
+    timeZone: "America/New_York",
+    name: virtualUser.name,
+  }, virtualUser);
+  assert.equal(result.booking.service, "virtual_private");
+  assert.equal(result.booking.status, "pending");
+  assert.equal(observedBookingEventId, 102);
+
+  await db.query(
+    "INSERT INTO portal_users(id,name,email) VALUES($1,$2,$3) ON CONFLICT(id) DO NOTHING",
+    [virtualUser.id, virtualUser.name, virtualUser.email],
+  );
+  await assert.rejects(
+    db.query(
+      "INSERT INTO booking_flows(id,user_id,service) VALUES($1,$2,$3)",
+      [crypto.randomUUID(), virtualUser.id, "unexpected"],
+    ),
+    (error) => error.code === "23514",
+  );
+  const oldGroup = await data("/flows", { service: "virtual", childId: null }, virtualUser);
+  assert.equal(oldGroup.service, "virtual");
+
+  const adultFlow = await data("/flows", {
+    service: "virtual_private",
+    childId: null,
+  }, virtualUser);
+  const adultValues = {
+    clientName: virtualUser.name,
+    birthDate: "1980-01-01",
+    address: "1 Main",
+    city: "City",
+    province: "QC",
+    postalCode: "H0H 0H0",
+    email: virtualUser.email,
+    preferredPhone: "cell",
+    reason: "Virtual private adult intake",
+    signature: virtualUser.name,
+    signDate: new Date().toISOString().slice(0, 10),
+    educationInitials: "VP",
+    discomfortInitials: "VP",
+    healthInitials: "VP",
+    cancellationInitials: "VP",
+    releasorName: virtualUser.name,
+    conditions: [],
+  };
+  await data(`/flows/${adultFlow.id}/intake`, adultValues, virtualUser);
+  await data(
+    `/flows/${adultFlow.id}/slots?${new URLSearchParams({ start, end, timeZone: "America/New_York" })}`,
+    undefined,
+    virtualUser,
+  );
+  assert.equal(observedEventId, 101);
+  assert.equal(observedSlotEventId, 101);
+  const adultBooking = await data(`/flows/${adultFlow.id}/book`, {
+    start,
+    timeZone: "America/New_York",
+    name: virtualUser.name,
+  }, virtualUser);
+  assert.equal(adultBooking.booking.service, "virtual_private");
+  assert.equal(observedBookingEventId, 101);
+});
+
 test("Heidi’s rejection updates the account and booking retries cannot confirm it", async () => {
   const [booking] = await db.query(
     "SELECT * FROM bookings WHERE cal_uid IS NOT NULL LIMIT 1",
@@ -474,7 +617,10 @@ test("Heidi’s rejection updates the account and booking retries cannot confirm
 });
 
 test("adult and child reviews recur after six calendar months and cannot bypass ownership or overwrite a newer review", async () => {
-  const [child] = await db.query("SELECT child_id FROM intakes LIMIT 1");
+  const [child] = await db.query(
+    "SELECT child_id FROM intakes WHERE guardian_id=$1 LIMIT 1",
+    [user.id],
+  );
   for (const [table, key, subject, childId] of [
     ["adult_intakes", "user_id", user.id, null],
     ["intakes", "child_id", child.child_id, child.child_id],
@@ -597,7 +743,10 @@ test("turning 18 overrides a current child intake and requires an independent ad
   assert.equal(isAdult("2008-09-26", "2026-09-26"), true);
   assert.equal(adultBirthday("2008-02-29"), "2026-02-28");
   assert.equal(easternDate(new Date("2026-09-26T03:59:00Z")), "2026-09-25");
-  const [child] = await db.query("SELECT child_id FROM intakes LIMIT 1");
+  const [child] = await db.query(
+    "SELECT child_id FROM intakes WHERE guardian_id=$1 LIMIT 1",
+    [user.id],
+  );
   const flow = await data("/flows", {
     service: "vermont",
     childId: child.child_id,
@@ -660,7 +809,10 @@ test("turning 18 overrides a current child intake and requires an independent ad
 
 test("parents cannot reserve child appointments on or after a future eighteenth birthday", async () => {
   await db.query("DELETE FROM api_limits");
-  const [child] = await db.query("SELECT child_id FROM intakes LIMIT 1");
+  const [child] = await db.query(
+    "SELECT child_id FROM intakes WHERE guardian_id=$1 LIMIT 1",
+    [user.id],
+  );
   const [dates] = await db.query(
     "SELECT ((now() AT TIME ZONE 'America/New_York')::date+1-interval '18 years')::date::text AS birth, ((now() AT TIME ZONE 'America/New_York')::date+1)::text AS birthday",
   );

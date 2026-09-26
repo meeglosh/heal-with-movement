@@ -12,6 +12,7 @@ for (const file of [
   "002_booking_seats.sql",
   "003_adult_intakes.sql",
   "004_intake_reviews.sql",
+  "005_virtual_private.sql",
 ])
   await pg.exec(
     await readFile(new URL("../migrations/" + file, import.meta.url), "utf8"),

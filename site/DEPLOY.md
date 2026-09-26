@@ -44,6 +44,8 @@ Set these in Cloudflare Pages settings, separately for Preview and Production. U
 | `CAL_MONTREAL_CHILD_EVENT_ID` | Child Montreal event type ID |
 | `CAL_VIRTUAL_EVENT_ID` | Adult virtual class event type ID |
 | `CAL_VIRTUAL_CHILD_EVENT_ID` | Child virtual class event type ID, if offered |
+| `CAL_VIRTUAL_PRIVATE_EVENT_ID` | Adult virtual private lesson event type ID |
+| `CAL_VIRTUAL_PRIVATE_CHILD_EVENT_ID` | Child virtual private lesson event type ID |
 
 Generate encryption keys using `openssl rand -base64 32`. Keep the production intake key stable: replacing it makes existing intake unreadable unless records are migrated with the old key. Never use the development key in production.
 
@@ -55,17 +57,17 @@ Allow the exact production domain in Neon Auth trusted domains. Localhost is ena
 
 Connect Heidi’s calendar, set the correct time zone, availability, location, session durations, and booking notice. Use separate adult and child event types. Private child events must use **always require confirmation**, with that policy enabled. The website creates a pending child request after checking that the authenticated parent owns the child and intake is on file. Heidi accepts or rejects the request in Cal.com; the website never automatically confirms it. Do not manually approve direct Cal.com child requests without checking intake in the portal.
 
-Enable `bookingRequiresAuthentication` on website events: this protects API booking with Heidi’s backend key, without requiring a Cal.com account for parents. Disable `requiresBookerEmailVerification`; Neon already verifies the parent. The shared virtual class uses 1,000 seats (Cal.com’s maximum), with attendee details and capacity hidden. Adult and child virtual IDs both point to that same event. Cal.com forbids confirmation on seated events; these use server-side intake gating and owner-authenticated API booking instead. Keep direct Cal.com links out of the website. Public Cal.com pages are outside the portal’s intake enforcement. Payments are not implemented in this version; paid Cal.com event types fail closed until a checkout flow is added.
+Enable `bookingRequiresAuthentication` on website events: this protects API booking with Heidi’s backend key, without requiring a Cal.com account for parents. Disable `requiresBookerEmailVerification`; Neon already verifies the parent. The shared virtual class uses 1,000 seats (Cal.com’s maximum), with attendee details and capacity hidden. Adult and child virtual IDs both point to that same event. Cal.com forbids confirmation on seated events; these use server-side intake gating and owner-authenticated API booking instead. Virtual private lessons are one-to-one, use Cal Video, and share schedule `2416901` and its existing calendar conflict checks. Configure the adult event without confirmation and the child event with **always require confirmation**. Keep direct Cal.com links out of the website. Public Cal.com pages are outside the portal’s intake enforcement. Payments are not collected by the website; virtual private pricing remains to be confirmed. Paid Cal.com event types fail closed until a checkout flow is added.
 
 Create a webhook pointing to `https://healwithmovement.com/api/cal/webhook`, with the same `CAL_WEBHOOK_SECRET`, for booking creation, confirmation, cancellation, rejection and rescheduling. Requests must have a valid `x-cal-signature-256`; the handler reads the current booking from Cal.com before updating local state. Never include intake answers or diagnoses in Cal.com fields or metadata.
 
-Cal.com event types use a recipient-neutral `customName` so meeting and calendar-invitation titles do not expose the organizer/booker pairing. Current values are `Private session with Heidi — Vermont | Heal with Movement` (adult Vermont), `Child session with Heidi — Vermont | Heal with Movement`, `Private session with Heidi — Montreal | Heal with Movement` (adult Montreal), `Child session with Heidi — Montreal | Heal with Movement`, and `Online group class with Heidi | Heal with Movement` (the shared virtual event). `customName` changes the displayed meeting title; Cal.com still controls native confirmation, pending-request, cancellation, and rescheduling email copy and status wording. No custom email workflow replaces those notifications.
+Cal.com event types use a recipient-neutral `customName` so meeting and calendar-invitation titles do not expose the organizer/booker pairing. Current values are `Private session with Heidi — Vermont | Heal with Movement` (adult Vermont), `Child session with Heidi — Vermont | Heal with Movement`, `Private session with Heidi — Montreal | Heal with Movement` (adult Montreal), `Child session with Heidi — Montreal | Heal with Movement`, `Private video lesson with Heidi | Heal with Movement` (virtual private adult), `Child video lesson with Heidi | Heal with Movement` (virtual private child), and `Online group class with Heidi | Heal with Movement` (the shared virtual event). `customName` changes the displayed meeting title; Cal.com still controls native confirmation, pending-request, cancellation, and rescheduling email copy and status wording. No custom email workflow replaces those notifications.
 
 ## Website release
 
 Use the GAPCO LLC Cloudflare account and Pages project `heal-with-movement`. Git build settings: root `site`, build command `npm run build`, output `public`, production branch `main`. Install npm dependencies including build dependencies. `nodejs_compat` is configured in `wrangler.toml`.
 
-Before publishing, apply migrations to the production database using its connection, add runtime secrets, configure trusted domains and the webhook, and resolve the existing legal/pricing placeholders. Run the tests and Worker bundle check:
+Before publishing, apply `005_virtual_private.sql` and any other pending migrations to the production database using its connection, add both `CAL_VIRTUAL_PRIVATE_EVENT_ID` and `CAL_VIRTUAL_PRIVATE_CHILD_EVENT_ID` with the event IDs above, add runtime secrets, configure trusted domains and the webhook, and resolve the existing legal/pricing placeholders. Migration `005_virtual_private.sql` and the two event IDs have only been applied to the `dev-client-booking` branch so far. Run the tests and Worker bundle check:
 
 ```sh
 npm test
@@ -95,6 +97,8 @@ Schedule `2416901`: Monday–Friday, 10:00–17:00, America/New_York. All sessio
 | Montreal adult | 7233087 |
 | Montreal child | 7233088 |
 | Virtual group, adult and child | 7233098 |
+| Virtual private, adult | 7234214 |
+| Virtual private, child | 7234216 |
 
 Event types are hidden from the public Cal.com profile. Hidden does not make a known direct URL inaccessible. Precise private-session meeting addresses still need Heidi’s confirmation.
 
