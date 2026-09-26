@@ -4,8 +4,8 @@ const screen = document.getElementById("portal-screen");
 const status = document.getElementById("portal-status");
 const root = document.getElementById("portal");
 const labels = {
-  vermont: "Vermont Private Lesson",
   montreal: "Montreal Private Lesson",
+  vermont: "Vermont Private Lesson",
   virtual: "Virtual Group Class",
 };
 let me,

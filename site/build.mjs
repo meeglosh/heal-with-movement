@@ -55,14 +55,14 @@ const LOCAL_BUSINESS_JSONLD = `<script type="application/ld+json">
   "@context": "https://schema.org",
   "@type": "HealthAndBeautyBusiness",
   "name": "Heal with Movement",
-  "description": "Anat Baniel Method NeuroMovement practitioner Heidi Rood offers in-person private lessons in Chittenden County, VT and Montreal, QC, and virtual group classes.",
+  "description": "Anat Baniel Method NeuroMovement practitioner Heidi Rood offers in-person private lessons in Montreal, QC and Chittenden County, VT, and virtual group classes.",
   "url": "${SITE_URL}",
   "logo": "${SITE_URL}/icons/icon-512.png",
   "image": "${SITE_URL}/assets/img/og-image.jpg",
   "email": "heidi@healwithmovement.com",
   "areaServed": [
-    {"@type":"AdministrativeArea","name":"Chittenden County, VT"},
-    {"@type":"City","name":"Montreal, QC"}
+    {"@type":"City","name":"Montreal, QC"},
+    {"@type":"AdministrativeArea","name":"Chittenden County, VT"}
   ],
   "priceRange": "{{PRICE}}",
   "founder": {"@type":"Person","name":"Heidi Rood","jobTitle":"Anat Baniel Method NeuroMovement Practitioner"},
@@ -127,7 +127,7 @@ function footer() {
             <img src="/assets/brand/logo-mark-dark.svg" alt="" width="28" height="28">
             <span style="font-family:var(--font-display); font-size:1.05rem;">Heal with Movement</span>
           </div>
-          <p style="opacity:.75; max-width:34ch;">Anat Baniel Method NeuroMovement with Heidi Rood, gentle, precise movement work for children and adults, in Chittenden County VT, Montreal QC, and online.</p>
+          <p style="opacity:.75; max-width:34ch;">Anat Baniel Method NeuroMovement with Heidi Rood, gentle, precise movement work for children and adults, in Montreal QC, Chittenden County VT, and online.</p>
           <form class="newsletter" action="#" method="post" onsubmit="return false;" aria-label="Newsletter signup">
             <label class="visually-hidden" for="newsletter-email">Email address</label>
             <input type="email" id="newsletter-email" placeholder="you@email.com" required>
@@ -168,7 +168,7 @@ function footer() {
   <div class="wrap">
     <div class="footer-bottom">
       <span>&copy; ${new Date().getFullYear()} Heal with Movement · Heidi Rood · <a href="mailto:heidi@healwithmovement.com">heidi@healwithmovement.com</a></span>
-      <span>Chittenden County, VT &amp; Montreal, QC</span>
+      <span>Montreal, QC &amp; Chittenden County, VT</span>
     </div>
   </div>
 </footer>`;
@@ -357,14 +357,14 @@ const scrollCraftVersion = createHash("sha256")
 const home = page({
   path: "/",
   title: "Heal with Movement | Anat Baniel Method NeuroMovement with Heidi Rood",
-  description: "Freedom from pain and injury, reduced stress, better sleep, and improved mobility through Anat Baniel Method NeuroMovement. Private lessons in Chittenden County VT, Montreal QC, and virtual group classes.",
+  description: "Freedom from pain and injury, reduced stress, better sleep, and improved mobility through Anat Baniel Method NeuroMovement. Private lessons in Montreal QC, Chittenden County VT, and virtual group classes.",
   active: "/",
   jsonLd: LOCAL_BUSINESS_JSONLD,
   body: `
 ${heroSection({
   eyebrow: "Heal with Movement · Heidi Rood",
   h1: "Freedom from pain, through your body's own <em>intelligence</em>.",
-  sub: "Gentle Anat Baniel Method lessons for children and adults, in Vermont, Montreal, and online.",
+  sub: "Gentle Anat Baniel Method lessons for children and adults, in Montreal, Vermont, and online.",
   ctas: `<a class="btn btn-primary breathe" href="/book.html">Book a Session</a><a class="btn btn-ghost" href="/abm.html" >What is ABM?</a>`,
   pinned: true,
 }) }
@@ -422,13 +422,13 @@ ${testimonialSequence()}
     <div class="settle">
       <p class="eyebrow">Locations</p>
       <h2>In person, or from anywhere.</h2>
-      <p>Private lessons are offered in Chittenden County, Vermont and in Montreal, Quebec. Virtual group classes meet online, wherever you are.</p>
+      <p>Private lessons are offered in Montreal, Quebec and Chittenden County, Vermont. Virtual group classes meet online, wherever you are.</p>
       <a class="btn btn-primary" href="/services.html">See services &amp; pricing</a>
     </div>
     <div class="card settle">
       <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:1em;">
-        <li><strong>Chittenden County, VT</strong>, in-person private lessons</li>
         <li><strong>Montreal, QC</strong>, in-person private lessons</li>
+        <li><strong>Chittenden County, VT</strong>, in-person private lessons</li>
         <li><strong>Virtual</strong>, live group classes, anywhere</li>
       </ul>
     </div>
@@ -455,7 +455,7 @@ ${testimonialSequence()}
 const about = page({
   path: "/about.html",
   title: "About Heidi Rood | Heal with Movement",
-  description: "Heidi Rood is an Anat Baniel Method NeuroMovement practitioner serving Chittenden County VT, Montreal QC, and clients online.",
+  description: "Heidi Rood is an Anat Baniel Method NeuroMovement practitioner serving Montreal QC, Chittenden County VT, and clients online.",
   active: "/about.html",
   body: `
 <section class="section">
@@ -463,7 +463,7 @@ const about = page({
     <div class="settle">
       <p class="eyebrow">About</p>
       <h1>Heidi Rood</h1>
-      <p>Heidi Rood is an Anat Baniel Method NeuroMovement (ABMNM) practitioner working with children and adults in Chittenden County, Vermont; Montreal, Quebec; and virtually with clients everywhere.</p>
+      <p>Heidi Rood is an Anat Baniel Method NeuroMovement (ABMNM) practitioner working with children and adults in Montreal, Quebec; Chittenden County, Vermont; and virtually with clients everywhere.</p>
       <p>Her approach is quiet, attentive, and precise: small, varied movements that give the brain new information to work with, rather than force or repetition. Clients describe her sessions as gentle, professional, and genuinely transformative.</p>
       <div class="skip-note">
         <strong>Placeholder for Heidi's review:</strong> this page currently uses the biography language supplied in the ABM copy document. Add Heidi's personal training history, certification details, years of practice, and a personal photo before launch. <span class="placeholder-tag">PLACEHOLDER</span>
@@ -518,7 +518,7 @@ const abm = page({
       <p>The body and brain are not separate: while we depend on the brain to organize the body's action, our movements give the brain the information it needs to grow and organize itself. This mind-body connection is crucial to a child's development, and to continued vitality as we age.</p>
     </div>
     <div class="settle">
-      <img src="/assets/img/timo-volz-ZlFKIG6dApg-unsplash.jpg" alt="A slow, deliberate stretch, unhurried and easy" loading="lazy" style="border-radius:2px;">
+      <img src="/assets/img/abm-neural-pathways-line-art.jpg" alt="Minimalist plum line drawing of an abstract brain with curved neural pathways and nodes" width="1254" height="1254" loading="lazy" decoding="async" style="display:block; width:100%; height:auto; border-radius:2px;">
     </div>
   </div>
 </section>
@@ -595,7 +595,7 @@ const testimonials = page({
 const services = page({
   path: "/services.html",
   title: "Services & Pricing | Heal with Movement",
-  description: "Private ABM NeuroMovement lessons in Chittenden County VT and Montreal QC, plus virtual group classes. Pricing to be confirmed with Heidi Rood.",
+  description: "Private ABM NeuroMovement lessons in Montreal QC and Chittenden County VT, plus virtual group classes. Pricing to be confirmed with Heidi Rood.",
   active: "/services.html",
   body: `
 <section class="section">
@@ -610,18 +610,18 @@ const services = page({
   <div class="wrap">
     <div class="grid grid-3">
       <div class="card settle">
-        <h3>Vermont Private Lesson</h3>
-        <p>In-person, one-on-one, Chittenden County, VT.</p>
-        <p class="stat">{{PRICE}}</p>
-        <p class="hint">Session length: 60 minutes</p>
-        <a class="btn btn-primary btn-small" href="/book.html?location=vermont">Book Vermont</a>
-      </div>
-      <div class="card settle">
         <h3>Montreal Private Lesson</h3>
         <p>In-person, one-on-one, Montreal, QC.</p>
         <p class="stat">{{PRICE}}</p>
         <p class="hint">Session length: 60 minutes</p>
         <a class="btn btn-primary btn-small" href="/book.html?location=montreal">Book Montreal</a>
+      </div>
+      <div class="card settle">
+        <h3>Vermont Private Lesson</h3>
+        <p>In-person, one-on-one, Chittenden County, VT.</p>
+        <p class="stat">{{PRICE}}</p>
+        <p class="hint">Session length: 60 minutes</p>
+        <a class="btn btn-primary btn-small" href="/book.html?location=vermont">Book Vermont</a>
       </div>
       <div class="card settle">
         <h3>Virtual Group Class</h3>
@@ -676,7 +676,7 @@ const faqItems = [
   ["How do I book for my child?", "Please complete the child intake form before your first session. Heidi reviews every intake ahead of a first lesson with a new child client."],
   ["What is the cancellation policy?", "Heal with Movement reserves the right to charge the full session fee for cancellations made with less than {{CANCELLATION_HOURS}} hours' notice. See the full Cancellation Policy page for details."],
   ["Do you offer virtual sessions?", "Yes, virtual group classes meet live online. Several clients have found the virtual format just as effective as in-person work."],
-  ["Where are in-person sessions held?", "In-person private lessons are offered in Chittenden County, Vermont and in Montreal, Quebec. {{STUDIO_ADDRESS}}"],
+  ["Where are in-person sessions held?", "In-person private lessons are offered in Montreal, Quebec and Chittenden County, Vermont. {{STUDIO_ADDRESS}}"],
 ];
 const faq = page({
   path: "/faq.html",
@@ -711,7 +711,7 @@ const contact = page({
       <p>Questions about sessions, locations, or scheduling? Send a note and Heidi will get back to you.</p>
       <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:.8em;">
         <li><strong>Email:</strong> <a href="mailto:heidi@healwithmovement.com">heidi@healwithmovement.com</a></li>
-        <li><strong>Locations:</strong> Chittenden County, VT &amp; Montreal, QC (in-person) · Virtual (anywhere)</li>
+        <li><strong>Locations:</strong> Montreal, QC &amp; Chittenden County, VT (in-person) · Virtual (anywhere)</li>
         <li><strong>Phone:</strong> {{PHONE}}</li>
       </ul>
     </div>
@@ -803,7 +803,7 @@ const cancellation = legalPage({
   body: `
 <p>We know plans change. Here's what to expect if you need to reschedule or cancel.</p>
 <h3>Notice window</h3>
-<p>Heal with Movement reserves the right to charge the full applicable session fee for missed or cancelled appointments if at least <strong>{{CANCELLATION_HOURS}} hours'</strong> notice has not been received. This figure is carried over from Heidi's existing intake form language; confirm it still applies uniformly across Vermont, Montreal, and virtual group sessions before publishing.</p>
+<p>Heal with Movement reserves the right to charge the full applicable session fee for missed or cancelled appointments if at least <strong>{{CANCELLATION_HOURS}} hours'</strong> notice has not been received. This figure is carried over from Heidi's existing intake form language; confirm it still applies uniformly across Montreal, Vermont, and virtual group sessions before publishing.</p>
 <h3>How to cancel or reschedule</h3>
 <p>Use the manage-booking link in your Cal.com confirmation email, or contact <a href="mailto:heidi@healwithmovement.com">heidi@healwithmovement.com</a> directly.</p>
 <h3>Group classes</h3>
