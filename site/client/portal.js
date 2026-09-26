@@ -86,7 +86,7 @@ function render(html) {
   screen.innerHTML = html;
   root.setAttribute("aria-busy", "false");
   screen.querySelector("h2")?.setAttribute("tabindex", "-1");
-  screen.querySelector("h2")?.focus({ preventScroll: true });
+  screen.querySelector("h2")?.focus();
 }
 function toolbar() {
   return `<div class="portal-toolbar"><span class="muted">${escape(me.user.email)}</span><button class="portal-link" id="account-home">My account</button><button class="portal-link" id="sign-out">Sign out</button></div>`;
@@ -144,7 +144,7 @@ function codeScreen() {
 async function dashboard() {
   me = await api("/api/portal/me");
   render(
-    `${toolbar()}<h2>Your account.</h2><p>Welcome, ${escape(me.user.name)}.</p><button class="btn btn-primary" id="new-booking">Book a Session</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review child intake</button>' : ""}`,
+    `${toolbar()}<h2>Your account.</h2><p>Welcome, ${escape(me.user.name)}.</p><button class="btn btn-primary" id="new-booking">Book a Session</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review intake</button>' : ""}`,
   );
   wireToolbar();
   on("#new-booking", () => {
@@ -234,20 +234,22 @@ async function resumeFlow() {
 async function intake() {
   const data = await api(`/api/portal/flows/${flow.id}/intake`);
   render(
-    `${toolbar()}<p class="eyebrow">First session</p><h2>Getting to know ${escape(flow.childName)}.</h2><p>Complete this once. It will stay on file for future bookings.</p>${data.html}`,
+    `${toolbar()}<p class="eyebrow">First session</p><h2>Getting to know ${flow.childId ? escape(flow.childName) : "you"}.</h2><p>Complete this once. It will stay on file for future bookings.</p>${data.html}`,
   );
   wireToolbar();
   const form = screen.querySelector("#intake-form");
   for (const [k, v] of Object.entries({
-    clientName: data.childName,
-    birthDate: String(data.birthDate).slice(0, 10),
+    clientName: data.childName || data.adultName || "",
+    birthDate: data.birthDate ? String(data.birthDate).slice(0, 10) : "",
     email: data.email,
     guardianName: me.user.name,
     signDate: new Date().toISOString().slice(0, 10),
   })) {
-    form.elements[k].value = v;
+    if (form.elements[k]) form.elements[k].value = v;
   }
-  for (const k of ["clientName", "birthDate", "email"])
+  for (const k of flow.childId
+    ? ["clientName", "birthDate", "email"]
+    : ["email"])
     form.elements[k].readOnly = true;
   const steps = [...form.querySelectorAll(".form-step")];
   let current = 0;
@@ -262,9 +264,7 @@ async function intake() {
     form
       .querySelectorAll(".step-progress i")
       .forEach((x, i) => (x.style.width = i <= current ? "100%" : "0%"));
-    steps[current]
-      .querySelector("input,textarea")
-      ?.focus({ preventScroll: true });
+    steps[current].querySelector("input,textarea")?.focus();
   }
   next.addEventListener("click", () => {
     const invalid = steps[current].querySelector(":invalid");
@@ -286,7 +286,9 @@ async function intake() {
         show();
         return invalid.reportValidity();
       }
-      const values = Object.fromEntries(new FormData(form));
+      const formData = new FormData(form);
+      const values = Object.fromEntries(formData);
+      if (!flow.childId) values.conditions = formData.getAll("conditions");
       try {
         await api(`/api/portal/flows/${flow.id}/intake`, values);
       } catch (error) {
@@ -380,12 +382,14 @@ function confirm(start) {
 async function staffList() {
   const data = await api("/api/portal/admin/intakes");
   render(
-    `${toolbar()}<h2>Child intake.</h2><div class="portal-options">${data.intakes.map((x) => `<button class="portal-choice" data-intake="${escape(x.id)}"><strong>${escape(x.name)}</strong><small>${escape(x.guardian_name)}</small></button>`).join("") || "<p>No intake submissions yet.</p>"}</div>`,
+    `${toolbar()}<h2>Intake records.</h2><div class="portal-options">${data.intakes.map((x) => `<button class="portal-choice" data-intake="${escape(x.id)}" data-kind="${x.kind}"><strong>${escape(x.name)}</strong><small>${x.kind === "adult" ? "Adult" : `Child · ${escape(x.guardian_name)}`}</small></button>`).join("") || "<p>No intake submissions yet.</p>"}</div>`,
   );
   wireToolbar();
   screen.querySelectorAll("[data-intake]").forEach((b) =>
     on(`[data-intake="${b.dataset.intake}"]`, async () => {
-      const data = await api(`/api/portal/admin/intakes/${b.dataset.intake}`);
+      const data = await api(
+        `/api/portal/admin/${b.dataset.kind === "adult" ? "adult-intakes" : "intakes"}/${encodeURIComponent(b.dataset.intake)}`,
+      );
       render(
         `${toolbar()}<h2>Intake record.</h2><dl class="portal-record">${Object.entries(
           data.intake,

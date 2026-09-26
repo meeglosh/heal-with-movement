@@ -1,3 +1,4 @@
+import { adultConditions } from "./adult-intake-fields.js";
 import { z } from "zod";
 export const id = z.uuid();
 export const service = z.enum(["vermont", "montreal", "virtual"]);
@@ -60,5 +61,54 @@ export const bookingInput = z
         }
       }, "Invalid time zone"),
     name: short,
+  })
+  .strict();
+
+export const adultIntakeInput = intakeInput
+  .pick({
+    clientName: true,
+    birthDate: true,
+    address: true,
+    city: true,
+    province: true,
+    postalCode: true,
+    email: true,
+    occupation: true,
+    homePhone: true,
+    cellPhone: true,
+    workPhone: true,
+    preferredPhone: true,
+    referredBy: true,
+    reason: true,
+    surgicalHistory: true,
+    supportDevices: true,
+    medications: true,
+    additionalInfo: true,
+    signature: true,
+    signDate: true,
+  })
+  .extend({
+    mentalHealth: optional,
+    neck: optional,
+    arms: optional,
+    back: optional,
+    shoulders: optional,
+    hips: optional,
+    legs: optional,
+    knees: optional,
+    anklesFeet: optional,
+    otherAreas: optional,
+    pregnancyDue: optional,
+    otherConditions: optional,
+    handDominance: z.enum(["", "right", "left"]).optional().default(""),
+    conditions: z
+      .array(z.enum(adultConditions))
+      .max(adultConditions.length)
+      .default([]),
+    educationInitials: short,
+    discomfortInitials: short,
+    healthInitials: short,
+    cancellationInitials: short,
+    releasorName: short,
   })
   .strict();

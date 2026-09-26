@@ -58,7 +58,11 @@ async function data(path, body, who) {
   return (await request(path, body, who)).json();
 }
 before(async () => {
-  for (const file of ["001_portal.sql", "002_booking_seats.sql"])
+  for (const file of [
+    "001_portal.sql",
+    "002_booking_seats.sql",
+    "003_adult_intakes.sql",
+  ])
     await pg.exec(
       await readFile(new URL("../migrations/" + file, import.meta.url), "utf8"),
     );
@@ -158,11 +162,121 @@ test("child intake only exists inside owned first-child booking and persists acr
   assert.equal(view.intake.reason, "Test intake");
   assert.equal((await db.query("SELECT * FROM audit_events")).length, 1);
 });
-test("adult booking cannot expose intake", async () => {
+test("adult intake is required once, private, encrypted, and separate from child intake", async () => {
   const flow = await data("/flows", { service: "vermont", childId: null });
+  assert.equal(flow.needsIntake, true);
+  const booking = {
+    start: new Date(Date.now() + 86400000).toISOString(),
+    timeZone: "UTC",
+    name: "Parent",
+  };
+  await assert.rejects(
+    request(`/flows/${flow.id}/slots`),
+    (e) => e.status === 409,
+  );
+  await assert.rejects(
+    request(`/flows/${flow.id}/book`, booking),
+    (e) => e.status === 409,
+  );
+  await assert.rejects(
+    request(`/flows/${flow.id}/intake`, undefined, {
+      ...user,
+      id: "another-adult",
+    }),
+    (e) => e.status === 404,
+  );
+  const form = await data(`/flows/${flow.id}/intake`);
+  assert.match(form.html, /Release of liability/);
+  assert.doesNotMatch(form.html, /guardianName/);
+  const values = {
+    clientName: "Adult Name",
+    birthDate: "1980-01-01",
+    address: "1 Main",
+    city: "City",
+    province: "VT",
+    postalCode: "12345",
+    email: "forged@example.invalid",
+    preferredPhone: "cell",
+    reason: "Synthetic adult history",
+    conditions: ["Arthritis", "Vision: Glasses"],
+    educationInitials: "AN",
+    discomfortInitials: "AN",
+    healthInitials: "AN",
+    cancellationInitials: "AN",
+    releasorName: "Adult Name",
+    signature: "Adult Name",
+    signDate: new Date().toISOString().slice(0, 10),
+  };
+  await assert.rejects(
+    request(`/flows/${flow.id}/intake`, { ...values, healthInitials: "" }),
+    (e) => e.status === 400,
+  );
+  await data(`/flows/${flow.id}/intake`, values);
+  await assert.rejects(
+    request(`/flows/${flow.id}/intake`, values),
+    (e) => e.status === 409,
+  );
   await assert.rejects(
     request(`/flows/${flow.id}/intake`),
+    (e) => e.status === 409,
+  );
+  const [saved] = await db.query(
+    "SELECT * FROM adult_intakes WHERE user_id=$1",
+    [user.id],
+  );
+  assert.ok(!saved.encrypted_payload.includes(values.reason));
+  const plain = await decryptIntake(
+    saved.encrypted_payload,
+    env.INTAKE_ENCRYPTION_KEY,
+    `adult:${user.id}`,
+  );
+  assert.equal(plain.email, user.email);
+  assert.deepEqual(plain.conditions, values.conditions);
+  await assert.rejects(
+    decryptIntake(
+      saved.encrypted_payload,
+      env.INTAKE_ENCRYPTION_KEY,
+      "adult:another-adult",
+    ),
+  );
+  const next = await data("/flows", { service: "montreal", childId: null });
+  assert.equal(next.needsIntake, false);
+  const other = await data(
+    "/flows",
+    { service: "vermont", childId: null },
+    { ...user, id: "another-adult" },
+  );
+  assert.equal(other.needsIntake, true);
+  const { child } = await data("/children", {
+    name: "Another Child",
+    birthDate: "2020-02-01",
+  });
+  assert.equal(
+    (await data("/flows", { service: "vermont", childId: child.id }))
+      .needsIntake,
+    true,
+  );
+  await assert.rejects(
+    request("/admin/adult-intakes/parent"),
     (e) => e.status === 403,
+  );
+  const staff = {
+    id: "staff",
+    email: "staff@example.invalid",
+    emailVerified: true,
+    name: "Heidi",
+  };
+  const list = await data("/admin/intakes", undefined, staff);
+  assert.ok(list.intakes.some((i) => i.kind === "adult" && i.id === user.id));
+  const view = await data("/admin/adult-intakes/parent", undefined, staff);
+  assert.equal(view.intake.reason, values.reason);
+  assert.equal(
+    (
+      await db.query("SELECT * FROM audit_events WHERE subject_user_id=$1", [
+        user.id,
+      ])
+    ).length,
+    1,
   );
 });
 test("uncertain Cal creation is retained and never retried", async () => {

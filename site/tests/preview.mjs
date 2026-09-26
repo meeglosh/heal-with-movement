@@ -5,7 +5,11 @@ import { resolve, extname } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { portal } from "../server/portal.js";
 const pg = new PGlite();
-for (const file of ["001_portal.sql", "002_booking_seats.sql"])
+for (const file of [
+  "001_portal.sql",
+  "002_booking_seats.sql",
+  "003_adult_intakes.sql",
+])
   await pg.exec(
     await readFile(new URL("../migrations/" + file, import.meta.url), "utf8"),
   );

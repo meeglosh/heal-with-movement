@@ -74,10 +74,10 @@ npx wrangler pages deploy public --project-name=heal-with-movement
 
 ## Behavior and operational checks
 
-- Intake is available only after sign-in, selecting a child, and starting a booking. The old `/intake` and `/intake.html` routes redirect to booking.
-- Intake is encrypted with AES-GCM and bound to its child ID. A unique database key prevents a second submission from replacing it. It remains completed after abandoned or cancelled bookings.
+- Intake is available only after sign-in and starting a booking. Adult bookings require the adult form once per account; child bookings require the child form once per child. Both availability and booking creation are blocked server-side until the relevant intake is complete. The old `/intake` and `/intake.html` routes redirect to booking.
+- Intake is encrypted with AES-GCM and bound to its child ID or adult account ID. A unique database key prevents a second submission from replacing it. It remains completed after abandoned or cancelled bookings.
 - One parent account can own multiple child profiles. Sharing a child between parent accounts is not implemented.
-- Heidi reads intake from **My account → Review child intake**, with server-side staff authorization and an access audit record. Intake is not sent by email.
+- Heidi reads intake from **My account → Review intake**, with server-side staff authorization and an access audit record. Intake is not sent by email.
 - One booking flow creates at most one remote booking attempt. If Cal.com times out, the request is marked `needs_review`; check Cal.com before asking the client to try a new booking.
 - Cancellation/rescheduling currently use Cal.com confirmation-email links. Do not cancel group bookings with the organizer API without a seat-specific implementation.
 - Before launch, test two children, a repeat booking, an adult booking, cancellation, rescheduling, unavailable slots, and staff access with real event configurations. Local tests use a calendar stub and do not send calendar invitations.
@@ -95,3 +95,5 @@ Schedule `2416901`: Monday–Friday, 10:00–17:00, America/New_York. All sessio
 | Virtual group, adult and child | 7233098 |
 
 Event types are hidden from the public Cal.com profile. Hidden does not make a known direct URL inaccessible. Precise private-session meeting addresses still need Heidi’s confirmation.
+
+Adult intake uses `003_adult_intakes.sql`, encrypted with the existing intake key and bound to the authenticated adult account. Completion persists even if the booking is abandoned or cancelled. Existing adults with no saved intake must complete it at their next booking. The original form is in `docs/Original website copy/ABM Intake form (Adult).pdf`; health answers and the four initialed acknowledgments are preserved. Staff reads are audited by adult account ID.

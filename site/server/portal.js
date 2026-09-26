@@ -6,8 +6,10 @@ import {
   childInput,
   flowInput,
   intakeInput,
+  adultIntakeInput,
   bookingInput,
 } from "./validation.js";
+import { adultIntakeForm } from "./adult-intake-form.js";
 import { intakeForm } from "./intake-form.js";
 
 function parse(schema, value) {
@@ -37,7 +39,7 @@ export async function limit(db, key, max = 60) {
 export async function ownedFlow(db, userId, flowId) {
   parse(id, flowId);
   const [flow] = await db.query(
-    `SELECT f.*,c.name AS child_name,c.birth_date,i.completed_at FROM booking_flows f LEFT JOIN children c ON c.id=f.child_id LEFT JOIN intakes i ON i.child_id=f.child_id WHERE f.id=$1 AND f.user_id=$2 AND f.expires_at>now() AND (f.child_id IS NULL OR c.guardian_id=$2)`,
+    `SELECT f.*,c.name AS child_name,c.birth_date,CASE WHEN f.child_id IS NULL THEN a.completed_at ELSE i.completed_at END AS completed_at FROM booking_flows f LEFT JOIN children c ON c.id=f.child_id LEFT JOIN intakes i ON i.child_id=f.child_id LEFT JOIN adult_intakes a ON a.user_id=f.user_id WHERE f.id=$1 AND f.user_id=$2 AND f.expires_at>now() AND (f.child_id IS NULL OR c.guardian_id=$2)`,
     [flowId, userId],
   );
   if (!flow)
@@ -54,7 +56,7 @@ function publicFlow(f) {
     childId: f.child_id,
     childName: f.child_name,
     birthDate: f.birth_date ? String(f.birth_date).slice(0, 10) : null,
-    needsIntake: !!f.child_id && !f.completed_at,
+    needsIntake: !f.completed_at,
   };
 }
 function publicBooking(b) {
@@ -149,25 +151,26 @@ export async function portal(request, env, { db, auth, cal }) {
     const action = match[2];
     if (!action && request.method === "GET") return json(publicFlow(flow));
     if (action === "intake") {
-      if (!flow.child_id)
-        throw new HttpError(
-          403,
-          "Intake is only available while booking for a child.",
-        );
       if (flow.completed_at)
-        throw new HttpError(409, "Intake is already complete for this child.");
+        throw new HttpError(409, "Intake is already complete.");
       if (request.method === "GET")
         return json({
-          html: intakeForm,
+          html: flow.child_id ? intakeForm : adultIntakeForm,
+          adultName: user.name,
           childName: flow.child_name,
           birthDate: flow.birth_date,
           email: user.email,
         });
       if (request.method === "POST") {
-        const data = parse(intakeInput, await readJSON(request));
+        const data = parse(
+          flow.child_id ? intakeInput : adultIntakeInput,
+          await readJSON(request),
+        );
         // Identity belongs to the authenticated guardian and child record, never a submitted ID/email.
-        data.clientName = flow.child_name;
-        data.birthDate = String(flow.birth_date).slice(0, 10);
+        if (flow.child_id) {
+          data.clientName = flow.child_name;
+          data.birthDate = String(flow.birth_date).slice(0, 10);
+        }
         data.email = user.email;
         if (data.signDate !== new Date().toISOString().slice(0, 10))
           throw new HttpError(
@@ -177,26 +180,28 @@ export async function portal(request, env, { db, auth, cal }) {
         const encrypted = await encryptIntake(
           data,
           env.INTAKE_ENCRYPTION_KEY,
-          flow.child_id,
+          flow.child_id || `adult:${user.id}`,
         );
-        const rows = await db.query(
-          "INSERT INTO intakes(child_id,guardian_id,encrypted_payload) VALUES($1,$2,$3) ON CONFLICT(child_id) DO NOTHING RETURNING child_id",
-          [flow.child_id, user.id, encrypted],
-        );
+        const rows = flow.child_id
+          ? await db.query(
+              "INSERT INTO intakes(child_id,guardian_id,encrypted_payload) VALUES($1,$2,$3) ON CONFLICT(child_id) DO NOTHING RETURNING child_id",
+              [flow.child_id, user.id, encrypted],
+            )
+          : await db.query(
+              "INSERT INTO adult_intakes(user_id,encrypted_payload) VALUES($1,$2) ON CONFLICT(user_id) DO NOTHING RETURNING user_id",
+              [user.id, encrypted],
+            );
         // A second tab cannot overwrite an intake already saved by the first.
         if (!rows.length)
-          throw new HttpError(
-            409,
-            "Intake is already complete for this child.",
-          );
+          throw new HttpError(409, "Intake is already complete.");
         return json({ ok: true });
       }
     }
     if (["slots", "book"].includes(action)) {
-      if (flow.child_id && !flow.completed_at)
+      if (!flow.completed_at)
         throw new HttpError(
           409,
-          "Please complete your child’s intake before choosing a time.",
+          "Please complete intake before choosing a time.",
         );
       const eid = eventId(env, flow.service, !!flow.child_id);
       const event = await cal.event(eid);
@@ -306,8 +311,30 @@ export async function portal(request, env, { db, auth, cal }) {
     if (!isStaff(user, env)) throw new HttpError(403, "Staff access required.");
     return json({
       intakes: await db.query(
-        "SELECT c.id,c.name,i.completed_at,u.name AS guardian_name FROM intakes i JOIN children c ON c.id=i.child_id JOIN portal_users u ON u.id=i.guardian_id ORDER BY i.completed_at DESC LIMIT 100",
+        "SELECT c.id::text,c.name,i.completed_at,u.name AS guardian_name, 'child' AS kind FROM intakes i JOIN children c ON c.id=i.child_id JOIN portal_users u ON u.id=i.guardian_id UNION ALL SELECT a.user_id,u.name,a.completed_at,NULL AS guardian_name,'adult' AS kind FROM adult_intakes a JOIN portal_users u ON u.id=a.user_id ORDER BY completed_at DESC LIMIT 100",
       ),
+    });
+  }
+  const adultAdmin = path.match(/^\/admin\/adult-intakes\/([^/]+)$/);
+  if (adultAdmin && request.method === "GET") {
+    if (!isStaff(user, env)) throw new HttpError(403, "Staff access required.");
+    const subject = decodeURIComponent(adultAdmin[1]);
+    const [row] = await db.query(
+      "SELECT * FROM adult_intakes WHERE user_id=$1",
+      [subject],
+    );
+    if (!row) throw new HttpError(404, "Intake not found.");
+    await db.query(
+      "INSERT INTO audit_events(id,actor_id,action,subject_user_id) VALUES($1,$2,$3,$4)",
+      [crypto.randomUUID(), user.id, "adult_intake.read", subject],
+    );
+    return json({
+      intake: await decryptIntake(
+        row.encrypted_payload,
+        env.INTAKE_ENCRYPTION_KEY,
+        `adult:${subject}`,
+      ),
+      completedAt: row.completed_at,
     });
   }
   const admin = path.match(/^\/admin\/intakes\/([^/]+)$/);
