@@ -1,162 +1,97 @@
-# Deploying Heal with Movement
+# Booking portal deployment
 
-This is a static site (no build step beyond the included generator) plus one
-Cloudflare Pages Function for the intake form. It deploys to Cloudflare Pages.
+The website runs on Cloudflare Pages with Pages Functions. Neon manages Postgres and Better Auth. Parents sign in on the website with an email code; only Heidi needs a Cal.com account.
 
-**This has not been deployed yet.** These are the steps to run when Heidi/the
-team is ready to go live.
+## Local development
 
-## 0. Layout of this folder
-
-```
-site/
-  build.mjs          generator — the only source of the HTML, run with plain `node build.mjs`
-  wrangler.toml       pages_build_output_dir = "public"
-  functions/          Pages Functions — must stay at this root, a sibling of public/
-  public/             everything Cloudflare Pages serves: generated *.html, css/, js/,
-                       assets/, icons/, favicon.ico, _headers, robots.txt, sitemap.xml,
-                       site.webmanifest, 404.html
-  PLACEHOLDERS.md, DEPLOY.md   docs, not deployed
-```
-
-`build.mjs` has no npm dependencies and needs none installed to run (plain
-Node `fs`/`path`/`url`), and it never reads anything outside this repo. It
-only writes the `*.html` files into `public/`; every other file under
-`public/` (css, js, images, icons, etc.) is committed directly, there is no
-separate asset-build step. Content lives in `build.mjs`, not hand-edited in
-the `public/*.html` files (they're generated output, overwritten on every
-run). After changing copy there:
-
-```bash
+```sh
 cd site
-node build.mjs
+npm ci
+npm run build
+npm test
+npm run dev -- --port 8788
 ```
 
-## 1. Cloudflare account
+Open http://localhost:8788/book. A plain static server cannot run the booking API.
 
-This project deploys to the **GAPCO LLC** Cloudflare account. The Pages
-project name is fixed to `heal-with-movement` in `wrangler.toml`, and no
-`account_id` is hardcoded in this repo on purpose (so the same repo can't
-silently deploy to the wrong account for whoever runs it).
+The linked Neon project is `billowing-river-83678674`. `neon.ts` enables managed authentication. `neon deploy` deploys Neon configuration, not the website. The `dev-client-booking` branch is isolated from production and currently expires October 3, 2026; extend or recreate it before then.
 
-```bash
-npx wrangler login
+The development connection was pulled into ignored `site/.env.development`. Runtime secrets belong in ignored `site/.dev.vars`. Never commit either file. To apply the portal schema to a selected branch:
+
+```sh
+node --env-file=.env.development scripts/migrate.mjs
 ```
 
-This opens a browser OAuth flow. Make sure the browser session/account you
-authorize is the one with access to **GAPCO LLC**. If your Cloudflare login
-has access to multiple accounts, `wrangler` will prompt you to pick one on
-first deploy — choose **GAPCO LLC**. To skip the prompt on every run, find the
-account ID for GAPCO LLC (`npx wrangler whoami` lists accounts you can access)
-and export it for the session instead of editing `wrangler.toml`:
+The migration is atomic and recorded in `portal_migrations`. It creates application tables without modifying Neon-managed auth tables. `portal_users.id` is the verified Neon Auth user ID.
 
-```bash
-export CLOUDFLARE_ACCOUNT_ID=<gapco-llc-account-id>
-```
+## Runtime configuration
 
-## 2. First deploy
+Set these in Cloudflare Pages settings, separately for Preview and Production. Use a development Neon branch for previews.
 
-**Preferred: Git-connected build.** Cloudflare dashboard → Pages → Create
-project → Connect to Git → pick this repo, under the GAPCO LLC account, with:
+| Variable | Purpose |
+| --- | --- |
+| `APP_ORIGIN` | Exact origin, such as `https://healwithmovement.com`; no trailing slash |
+| `DATABASE_URL` | Neon connection, stored as a secret |
+| `NEON_AUTH_BASE_URL` | Managed auth endpoint for the same Neon branch |
+| `NEON_AUTH_COOKIE_SECRET` | Random secret of at least 32 characters; store as a secret |
+| `INTAKE_ENCRYPTION_KEY` | 32 random bytes encoded as base64; store as a secret and back it up securely |
+| `STAFF_EMAILS` | Comma-separated verified staff emails allowed to read intake |
+| `CAL_API_KEY` | Heidi’s Cal.com API key, stored as a secret |
+| `CAL_WEBHOOK_SECRET` | Random secret shared with Cal.com webhook configuration |
+| `CAL_VERMONT_EVENT_ID` | Adult Vermont event type ID |
+| `CAL_VERMONT_CHILD_EVENT_ID` | Child Vermont event type ID |
+| `CAL_MONTREAL_EVENT_ID` | Adult Montreal event type ID |
+| `CAL_MONTREAL_CHILD_EVENT_ID` | Child Montreal event type ID |
+| `CAL_VIRTUAL_EVENT_ID` | Adult virtual class event type ID |
+| `CAL_VIRTUAL_CHILD_EVENT_ID` | Child virtual class event type ID, if offered |
 
-- **Root directory:** `site`
-- **Build command:** `node build.mjs`
-- **Build output directory:** `public`
-- **Production branch:** `main`
+Generate encryption keys using `openssl rand -base64 32`. Keep the production intake key stable: replacing it makes existing intake unreadable unless records are migrated with the old key. Never use the development key in production.
 
-Cloudflare's build image runs plain Node with no extra setup; `build.mjs` has
-no devDependencies to install, so no "Install command" is needed. Pages
-Functions in `site/functions/` are picked up automatically, since Cloudflare
-looks for `functions/` as a sibling of the build output directory, at the
-project root (`site/`), not inside `public/`.
+## Neon Auth
 
-**Manual/CLI deploy** (e.g. for a one-off preview before Git is connected),
-from the `site/` directory:
+Allow the exact production domain in Neon Auth trusted domains. Localhost is enabled on the development branch. Configure a verified custom email sender in Neon Auth for production; the development branch currently uses Neon’s shared sender. Verify email-code delivery and sign-out in the deployed environment before launch. All authorization is checked server-side against a fresh managed session; the client cannot choose its user ID.
 
-```bash
-node build.mjs
+## Cal.com
+
+Connect Heidi’s calendar, set the correct time zone, availability, location, session durations, and booking notice. Use separate adult and child event types. Private child events must use **always require confirmation**, with that policy enabled. The website only confirms a child request after checking that the authenticated parent owns the child and intake is on file. Do not manually approve direct Cal.com child requests without checking intake in the portal.
+
+Enable `bookingRequiresAuthentication` on website events: this protects API booking with Heidi’s backend key, without requiring a Cal.com account for parents. Disable `requiresBookerEmailVerification`; Neon already verifies the parent. The shared virtual class uses 1,000 seats (Cal.com’s maximum), with attendee details and capacity hidden. Adult and child virtual IDs both point to that same event. Cal.com forbids confirmation on seated events; these use server-side intake gating and owner-authenticated API booking instead. Keep direct Cal.com links out of the website. Public Cal.com pages are outside the portal’s intake enforcement. Payments are not implemented in this version; paid Cal.com event types fail closed until a checkout flow is added.
+
+Create a webhook pointing to `https://healwithmovement.com/api/cal/webhook`, with the same `CAL_WEBHOOK_SECRET`, for booking creation, confirmation, cancellation, rejection and rescheduling. Requests must have a valid `x-cal-signature-256`; the handler reads the current booking from Cal.com before updating local state. Never include intake answers or diagnoses in Cal.com fields or metadata.
+
+## Website release
+
+Use the GAPCO LLC Cloudflare account and Pages project `heal-with-movement`. Git build settings: root `site`, build command `npm run build`, output `public`, production branch `main`. Install npm dependencies including build dependencies. `nodejs_compat` is configured in `wrangler.toml`.
+
+Before publishing, apply migrations to the production database using its connection, add runtime secrets, configure trusted domains and the webhook, and resolve the existing legal/pricing placeholders. Run the tests and Worker bundle check:
+
+```sh
+npm test
+npm run build
+npm run bundle:check
 npx wrangler pages deploy public --project-name=heal-with-movement
 ```
 
-## 3. Environment variables / secrets (Pages project settings)
+## Behavior and operational checks
 
-Set these under **Pages project → Settings → Environment variables** for both
-Production and Preview:
+- Intake is available only after sign-in, selecting a child, and starting a booking. The old `/intake` and `/intake.html` routes redirect to booking.
+- Intake is encrypted with AES-GCM and bound to its child ID. A unique database key prevents a second submission from replacing it. It remains completed after abandoned or cancelled bookings.
+- One parent account can own multiple child profiles. Sharing a child between parent accounts is not implemented.
+- Heidi reads intake from **My account → Review child intake**, with server-side staff authorization and an access audit record. Intake is not sent by email.
+- One booking flow creates at most one remote booking attempt. If Cal.com times out, the request is marked `needs_review`; check Cal.com before asking the client to try a new booking.
+- Cancellation/rescheduling currently use Cal.com confirmation-email links. Do not cancel group bookings with the organizer API without a seat-specific implementation.
+- Before launch, test two children, a repeat booking, an adult booking, cancellation, rescheduling, unavailable slots, and staff access with real event configurations. Local tests use a calendar stub and do not send calendar invitations.
 
-| Variable | Value |
-|---|---|
-| `RESEND_API_KEY` | From resend.com → API Keys. Used by `functions/api/intake.js`. |
-| `INTAKE_TO_EMAIL` | `heidi@healwithmovement.com` |
-| `TURNSTILE_SECRET` | From the Cloudflare Turnstile widget (see below) — mark as **Secret**, not plaintext. |
+## Configured Cal.com resources
 
-Also update the **public** Turnstile site key (safe to commit) in two places:
+Schedule `2416901`: Monday–Friday, 10:00–17:00, America/New_York. All sessions are 60 minutes. Existing Apple Calendar remains the destination/conflict calendar.
 
-- `site/public/intake.html` → `data-sitekey="{{TURNSTILE_SITE_KEY}}"`
-- `site/public/js/config.js` → `turnstileSiteKey`
+| Event | ID |
+| --- | --- |
+| Vermont adult | 7233085 |
+| Vermont child | 7233086 |
+| Montreal adult | 7233087 |
+| Montreal child | 7233088 |
+| Virtual group, adult and child | 7233098 |
 
-### Create the Turnstile widget
-
-Dashboard → Turnstile → Add widget → domain `healwithmovement.com` (+ your
-`*.pages.dev` preview domain) → Managed mode. Copy the site key and secret key
-into the places above.
-
-## 4. Custom domain
-
-Pages project → Custom domains → add `healwithmovement.com` and `www`. Update
-DNS if the domain isn't already on Cloudflare, or just proxy it if it is.
-
-## 5. Cal.com setup
-
-1. Create a Cal.com account (or team) for Heidi at `healwithmovement` (or
-   update `public/js/config.js` if the real username differs).
-2. Create three **event types**:
-   - `vermont-private` — In-person private lesson, Chittenden County, VT
-   - `montreal-private` — In-person private lesson, Montreal, QC
-   - `virtual-group` — Virtual group class, enable **Seats per time slot**
-     (Event type → Limits → "Offer seats") and set the seat count once Heidi
-     confirms group size.
-3. **Stripe**: Cal.com → Settings → Payments → connect Stripe account. On each
-   event type, add a Payment step with the confirmed price (replace
-   `{{PRICE}}` in `public/services.html` once known) and currency.
-4. **Google Calendar sync**: Cal.com → Settings → My Availability →
-   Conferencing/Calendars → connect Heidi's Google Calendar, both to check
-   for conflicts and to write confirmed bookings.
-5. **Reminder workflows**: Cal.com → Workflows → create a workflow attached to
-   all three event types: email/SMS reminder 24h before, and a
-   confirmation email immediately after booking.
-6. **Cancellation policy text**: paste the finalized cancellation copy from
-   `public/cancellation.html` into each event type's booking questions/description
-   and into the confirmation email template, once `{{CANCELLATION_HOURS}}` is
-   confirmed. Cal.com's own cancellation/reschedule policy field can also
-   enforce the notice window automatically (Event type → Advanced → minimum
-   notice for cancellation, if available on your plan).
-7. **Route child bookings to the intake form**: the site links to
-   `/intake.html` from the Book page notice and main navigation already. As a
-   second layer, add a link to `https://healwithmovement.com/intake.html` in
-   the confirmation email/page for any event type used for a child's first
-   session, so parents who booked directly still get prompted. (See
-   `PLACEHOLDERS.md` → "Booking → intake flow" for the full reasoning.)
-8. Update `site/public/js/config.js` → `cal.calLink` with the real calLink slugs if
-   they differ from the placeholders.
-
-## 6. Resend setup (intake form email)
-
-1. Create a Resend account, verify the `healwithmovement.com` sending domain
-   (SPF/DKIM records — Resend gives you the DNS records; add them in
-   Cloudflare DNS for the GAPCO LLC account's zone).
-2. Generate an API key, add it as `RESEND_API_KEY` above.
-3. The function sends from `intake@healwithmovement.com` — make sure that
-   address is covered by the verified domain (it does not need to be a real
-   inbox, just part of the verified sending domain).
-
-## 7. Sanity checks before going live
-
-- [ ] `node build.mjs` run after any copy change, generated `.html` committed
-- [ ] All `{{PLACEHOLDER}}` tokens resolved — see `PLACEHOLDERS.md`
-- [ ] Turnstile site key + secret set, test intake form submits and email
-      arrives at heidi@healwithmovement.com
-- [ ] Cal.com embed loads for all three locations on `/book.html`
-- [ ] Hero is a still image (`public/assets/img/hero-1672.*` / `hero-1000.*`), not video. An earlier video pipeline was removed at the user's request; the encoded clips are kept for reference (not deployed) in `site/_unused/video/`.
-- [ ] `sitemap.xml` / `robots.txt` domain matches the real domain
-- [ ] Analytics snippet swapped from placeholder to real Plausible/Cloudflare
-      Web Analytics site
+Event types are hidden from the public Cal.com profile. Hidden does not make a known direct URL inaccessible. Precise private-session meeting addresses still need Heidi’s confirmation.
