@@ -34,7 +34,9 @@ const cal = {
     calls++;
     return { uid: "cal-" + calls, status: "pending" };
   },
-  confirm: async () => ({ status: "accepted" }),
+  confirm: async () => {
+    assert.fail("Website must never auto-confirm Heidi’s pending requests");
+  },
 };
 async function request(path, body, who = user, extra = {}) {
   return portal(
@@ -143,7 +145,7 @@ test("child intake only exists inside owned first-child booking and persists acr
   const first = await data(`/flows/${flow.id}/book`, input);
   const second = await data(`/flows/${flow.id}/book`, input);
   assert.equal(first.booking.id, second.booking.id);
-  assert.equal(first.booking.status, "accepted");
+  assert.equal(first.booking.status, "pending");
   assert.equal(calls, 1);
   await assert.rejects(request("/admin/intakes"), (e) => e.status === 403);
   const staff = {
@@ -314,4 +316,44 @@ test("Cal offset slots normalize to UTC and child group requires authenticated A
       true,
     ),
   );
+});
+
+test("Heidi’s rejection updates the account and booking retries cannot confirm it", async () => {
+  const [booking] = await db.query(
+    "SELECT * FROM bookings WHERE cal_uid IS NOT NULL LIMIT 1",
+  );
+  await db.query("UPDATE bookings SET status='pending' WHERE id=$1", [
+    booking.id,
+  ]);
+  const rejectingCalendar = {
+    ...cal,
+    get: async () => ({
+      uid: booking.cal_uid,
+      eventTypeId: booking.event_type_id,
+      status: "rejected",
+      start: new Date(booking.start_at).toISOString(),
+      attendees: [{ email: user.email }],
+    }),
+  };
+  const response = await request("/me", undefined, user, {
+    cal: rejectingCalendar,
+  });
+  const account = await response.json();
+  assert.equal(
+    account.bookings.find((b) => b.id === booking.id).status,
+    "rejected",
+  );
+  const attempts = calls;
+  const retry = await request(
+    `/flows/${booking.flow_id}/book`,
+    {
+      start: new Date(booking.start_at).toISOString(),
+      timeZone: "UTC",
+      name: "Parent",
+    },
+    user,
+    { cal: rejectingCalendar },
+  );
+  assert.equal((await retry.json()).booking.status, "rejected");
+  assert.equal(calls, attempts);
 });

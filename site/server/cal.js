@@ -95,10 +95,6 @@ export function calendar(env, fetcher = fetch) {
         { version: "2024-09-04" },
       ),
     create: (body) => request("/bookings", { method: "POST", body }),
-    confirm: (uid) =>
-      request(`/bookings/${encodeURIComponent(uid)}/confirm`, {
-        method: "POST",
-      }),
     getSeat: (uid) => request(`/bookings/by-seat/${encodeURIComponent(uid)}`),
     get: (uid) => request(`/bookings/${encodeURIComponent(uid)}`),
   };

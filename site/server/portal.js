@@ -88,6 +88,26 @@ export async function portal(request, env, { db, auth, cal }) {
       "SELECT b.*,c.name AS child_name FROM bookings b LEFT JOIN children c ON c.id=b.child_id WHERE b.user_id=$1 ORDER BY b.start_at DESC LIMIT 50",
       [user.id],
     );
+    // Refresh recent active appointments even before a production webhook is connected.
+    // A calendar outage must not prevent the parent from opening their account.
+    await Promise.all(
+      bookings
+        .filter((b) => b.cal_uid && ["pending", "accepted"].includes(b.status))
+        .slice(0, 10)
+        .map(async (booking) => {
+          try {
+            await refreshBooking(
+              db,
+              cal,
+              { ...booking, email: user.email },
+              undefined,
+              booking,
+            );
+          } catch {
+            /* Keep the last known status when Cal.com is temporarily unavailable. */
+          }
+        }),
+    );
     return json({
       user: { name: user.name, email: user.email },
       staff: isStaff(user, env),
@@ -274,20 +294,7 @@ export async function portal(request, env, { db, auth, cal }) {
             remote.seatUid || null,
           ],
         );
-        if (flow.child_id && remote.status === "pending") {
-          try {
-            remote = await cal.confirm(remote.uid);
-            await db.query(
-              "UPDATE bookings SET status=$2,updated_at=now() WHERE id=$1",
-              [bookingId, remote.status || "accepted"],
-            );
-          } catch {
-            throw new HttpError(
-              502,
-              "Your request is saved and awaiting confirmation. Please do not book again; Heidi can review it.",
-            );
-          }
-        }
+        // Leave pending requests for Heidi to accept or reject in Cal.com.
         const [saved] = await db.query("SELECT * FROM bookings WHERE id=$1", [
           bookingId,
         ]);
@@ -349,32 +356,39 @@ export async function calWebhook(request, env, { db, cal }) {
     "SELECT b.*,u.email FROM bookings b JOIN portal_users u ON u.id=b.user_id WHERE b.cal_uid=$1 OR b.cal_uid=$2",
     [payload.uid, previous],
   );
-  for (const booking of candidates) {
-    let current = booking.cal_seat_uid
-      ? await cal.getSeat(booking.cal_seat_uid)
-      : remote;
-    // Follow a reschedule even when an older cancellation notification arrives last.
-    for (let i = 0; i < 5 && current.rescheduledToUid; i++)
-      current = await cal.get(current.rescheduledToUid);
-    if (
-      (current.eventType?.id || current.eventTypeId) !== booking.event_type_id
-    )
-      continue;
-    const attendee = current.attendees?.find(
-      (a) => a.email?.toLowerCase() === booking.email.toLowerCase(),
-    );
-    if (!attendee) continue;
-    const status =
-      attendee.status === "cancelled" ? "cancelled" : current.status;
-    if (
-      !["accepted", "pending", "cancelled", "rejected"].includes(status) ||
-      !Number.isFinite(Date.parse(current.start))
-    )
-      continue;
-    await db.query(
-      "UPDATE bookings SET cal_uid=$2,status=$3,start_at=$4,updated_at=now() WHERE id=$1",
-      [booking.id, current.uid, status, current.start],
-    );
-  }
+  for (const booking of candidates)
+    await refreshBooking(db, cal, booking, remote);
   return json({ ok: true });
+}
+
+async function refreshBooking(db, cal, booking, remote, target) {
+  let current = booking.cal_seat_uid
+    ? await cal.getSeat(booking.cal_seat_uid)
+    : remote || (await cal.get(booking.cal_uid));
+  // Follow a reschedule even when an older cancellation notification arrives last.
+  for (let i = 0; i < 5 && current.rescheduledToUid; i++)
+    current = await cal.get(current.rescheduledToUid);
+  if ((current.eventType?.id || current.eventTypeId) !== booking.event_type_id)
+    return;
+  const attendee = current.attendees?.find(
+    (a) => a.email?.toLowerCase() === booking.email.toLowerCase(),
+  );
+  if (!attendee) return;
+  const status = attendee.status === "cancelled" ? "cancelled" : current.status;
+  if (
+    !["accepted", "pending", "cancelled", "rejected"].includes(status) ||
+    !Number.isFinite(Date.parse(current.start))
+  )
+    return;
+  await db.query(
+    "UPDATE bookings SET cal_uid=$2,status=$3,start_at=$4,updated_at=now() WHERE id=$1",
+    [booking.id, current.uid, status, current.start],
+  );
+
+  if (target)
+    Object.assign(target, {
+      cal_uid: current.uid,
+      status,
+      start_at: current.start,
+    });
 }
