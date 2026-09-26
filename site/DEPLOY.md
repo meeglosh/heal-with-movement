@@ -59,6 +59,8 @@ Enable `bookingRequiresAuthentication` on website events: this protects API book
 
 Create a webhook pointing to `https://healwithmovement.com/api/cal/webhook`, with the same `CAL_WEBHOOK_SECRET`, for booking creation, confirmation, cancellation, rejection and rescheduling. Requests must have a valid `x-cal-signature-256`; the handler reads the current booking from Cal.com before updating local state. Never include intake answers or diagnoses in Cal.com fields or metadata.
 
+Cal.com event types use a recipient-neutral `customName` so meeting and calendar-invitation titles do not expose the organizer/booker pairing. Current values are `Private session with Heidi — Vermont | Heal with Movement` (adult Vermont), `Child session with Heidi — Vermont | Heal with Movement`, `Private session with Heidi — Montreal | Heal with Movement` (adult Montreal), `Child session with Heidi — Montreal | Heal with Movement`, and `Online group class with Heidi | Heal with Movement` (the shared virtual event). `customName` changes the displayed meeting title; Cal.com still controls native confirmation, pending-request, cancellation, and rescheduling email copy and status wording. No custom email workflow replaces those notifications.
+
 ## Website release
 
 Use the GAPCO LLC Cloudflare account and Pages project `heal-with-movement`. Git build settings: root `site`, build command `npm run build`, output `public`, production branch `main`. Install npm dependencies including build dependencies. `nodejs_compat` is configured in `wrangler.toml`.
