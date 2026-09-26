@@ -250,77 +250,40 @@ function signatureSequence() {
 </div>`;
 }
 
-// Hand-drawn benefit icons, one stroke family so they read as one set:
-// 1.25px stroke, round caps/joins, no fill, brand accent color. Each is a
-// simple open gesture rather than a stock icon-font glyph.
-// All icons: 64x64 viewBox, rendered at 64px (up from an earlier, too-small
-// 52px pass), 1.25px stroke with vector-effect:non-scaling-stroke so the
-// line stays thin regardless of any future scaling, round caps/joins, no
-// fill, --c-accent. Geometry is drawn to use most of the 64x64 box (roughly
-// the 8-56 range on each axis) rather than sitting small in one corner.
-const ICON_ATTRS = `fill="none" stroke="var(--c-accent)" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"`;
+// All nine icons are Phosphor Icons (https://phosphoricons.com), Thin
+// weight, MIT licensed. SVG path data downloaded once from
+// @phosphor-icons/core via jsdelivr and inlined here at build time, so
+// there is no icon-font or runtime dependency. Credited in PLACEHOLDERS.md.
+function phosphorIcon(pathD) {
+  return `<svg class="benefit-icon" viewBox="0 0 256 256" width="64" height="64" fill="currentColor" style="color:var(--c-accent)" aria-hidden="true" focusable="false"><path d="${pathD}"/></svg>`;
+}
 
-const BENEFIT_ICONS = {
-  // Freedom from pain: a joint opening into a soft, unforced arc, with a
-  // small gap at the base rather than a closed loop, "release" rather than
-  // "connection."
-  freedom: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-    <path d="M12 50 C12 30, 21 14, 33 14 C46 14, 54 24, 51 36" ${ICON_ATTRS}/>
-    <path d="M42 26 L51 36 L42 43" ${ICON_ATTRS}/>
-  </svg>`,
-  // Stress/sleep: a crescent moon over one slow, settling wave line.
-  sleep: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-    <path d="M38 9 C27 9, 18 18, 18 30 C18 42, 27 51, 38 51 C30 47, 24 40, 24 30 C24 20, 30 13, 38 9 Z" ${ICON_ATTRS}/>
-    <path d="M8 55 C13 50, 18 50, 23 55 C28 60, 33 60, 38 55 C43 50, 48 50, 53 55" ${ICON_ATTRS}/>
-  </svg>`,
-  // Mobility/brain: a neural spiral, the same family as the brand mark but
-  // drawn as its own simpler gesture, not a literal reuse.
-  mobility: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-    <path d="M35 55 C21 55, 11 45, 11 32 C11 19, 21 9, 33 9 C44 9, 53 17, 53 28 C53 37, 46 43, 39 43 C33 43, 28 39, 28 32 C28 27, 32 23, 37 23" ${ICON_ATTRS}/>
-  </svg>`,
+const PHOSPHOR_PATHS = {
+  personSimpleTaiChi: "M128,76a28,28,0,1,0-28-28A28,28,0,0,0,128,76Zm0-48a20,20,0,1,1-20,20A20,20,0,0,1,128,28Zm92,76a4,4,0,0,1-4,4H132v33.36l53.58,23A4,4,0,0,1,188,168v48a4,4,0,0,1-8,0V170.64l-51.22-22L50.68,219A4,4,0,1,1,45.32,213L124,142.22V108H40a4,4,0,0,1,0-8H216A4,4,0,0,1,220,104Z",
+  moonStars: "M236,96a4,4,0,0,1-4,4H212v20a4,4,0,0,1-8,0V100H184a4,4,0,0,1,0-8h20V72a4,4,0,0,1,8,0V92h20A4,4,0,0,1,236,96ZM144,52h12V64a4,4,0,0,0,8,0V52h12a4,4,0,0,0,0-8H164V32a4,4,0,0,0-8,0V44H144a4,4,0,0,0,0,8Zm69.73,103.58a4,4,0,0,1,.71,4,92,92,0,1,1-118-118,4,4,0,0,1,5.29,4.54A93.18,93.18,0,0,0,100,64a92.1,92.1,0,0,0,92,92,93.18,93.18,0,0,0,17.91-1.74A4,4,0,0,1,213.73,155.58Zm-9.46,7.67A100,100,0,0,1,92.75,51.73,84,84,0,1,0,204.27,163.25Z",
+  brain: "M244,124a52.1,52.1,0,0,0-32-48V72a44,44,0,0,0-84-18.3A44,44,0,0,0,44,72v4a52,52,0,0,0,0,96v4a44,44,0,0,0,84,18.3A44,44,0,0,0,212,176v-4A52.07,52.07,0,0,0,244,124ZM88,212a36,36,0,0,1-36-36v-1.41A52.13,52.13,0,0,0,64,176h8a4,4,0,0,0,0-8H64A44,44,0,0,1,49.33,82.5,4,4,0,0,0,52,78.73V72a36,36,0,0,1,72,0v78.75A44,44,0,0,0,88,132a4,4,0,0,0,0,8,36,36,0,0,1,0,72Zm104-44h-8a4,4,0,0,0,0,8h8a52.13,52.13,0,0,0,12-1.41V176a36,36,0,1,1-36-36,4,4,0,0,0,0-8,44,44,0,0,0-36,18.75V72a36,36,0,0,1,72,0v6.73a4,4,0,0,0,2.67,3.77A44,44,0,0,1,192,168Zm12-56a4,4,0,0,1-4,4h-4a32,32,0,0,1-32-32V80a4,4,0,0,1,8,0v4a24,24,0,0,0,24,24h4A4,4,0,0,1,204,112ZM92,84a32,32,0,0,1-32,32H56a4,4,0,0,1,0-8h4A24,24,0,0,0,84,84V80a4,4,0,0,1,8,0Z",
+  baby: "M92,136a8,8,0,1,1,8-8A8,8,0,0,1,92,136Zm72-16a8,8,0,1,0,8,8A8,8,0,0,0,164,120Zm-10.13,44.62a49,49,0,0,1-51.74,0,4,4,0,0,0-4.26,6.76,57,57,0,0,0,60.26,0,4,4,0,1,0-4.26-6.76ZM228,128A100,100,0,1,1,128,28,100.11,100.11,0,0,1,228,128Zm-8,0a92.11,92.11,0,0,0-90.06-92C116.26,54.07,116,71.83,116,72a12,12,0,0,0,24,0,4,4,0,0,1,8,0,20,20,0,0,1-40,0c0-.78.16-17.31,12-35.64A92,92,0,1,0,220,128Z",
+  heartbeat: "M72,140H32a4,4,0,0,1,0-8H69.86l14.81-22.22a4,4,0,0,1,6.66,0l28.67,43,12.67-19A4,4,0,0,1,136,132h24a4,4,0,0,1,0,8H138.14l-14.81,22.22a4,4,0,0,1-6.66,0L88,119.21l-12.67,19A4,4,0,0,1,72,140ZM178,44c-21.44,0-39.92,10.19-50,27.07C117.92,54.19,99.44,44,78,44a58.07,58.07,0,0,0-58,58q0,1.06,0,2.13a4,4,0,1,0,8-.26c0-.62,0-1.24,0-1.87A50.06,50.06,0,0,1,78,52c21.11,0,38.85,11.31,46.3,29.51a4,4,0,0,0,7.4,0C139.15,63.31,156.89,52,178,52a50.06,50.06,0,0,1,50,50c0,58-86,109.46-100,117.42-8.47-4.82-43.5-25.61-69.63-54.12a4,4,0,0,0-5.9,5.4c30.72,33.52,71.9,55.89,73.63,56.82a4,4,0,0,0,3.8,0,333.81,333.81,0,0,0,52.7-36.73C218,160.47,236,130.59,236,102A58.07,58.07,0,0,0,178,44Z",
+  personSimpleRun: "M152,84a28,28,0,1,0-28-28A28,28,0,0,0,152,84Zm0-48a20,20,0,1,1-20,20A20,20,0,0,1,152,36Zm65.66,101c-.57.26-6.84,3-18.08,3-13.86,0-35.25-4.15-62.81-22.16a162.59,162.59,0,0,1-19.49,40.78c9.47,2.56,23.08,7.5,35.14,16.67,18.3,13.92,27.58,33,27.58,56.68a4,4,0,0,1-8,0c0-15.89-5.88-53.77-59.7-66.37q-1.56,2.06-3.22,4.08c-18.85,22.83-42.42,34.72-68.6,34.72q-4.4,0-8.89-.45a4,4,0,1,1,.8-8c27.33,2.73,51.06-7.83,70.52-31.41,13.82-16.74,22.89-37.44,26.9-51.32-42.84-26.69-71-4.8-71.32-4.57a4,4,0,1,1-5-6.24c.36-.29,9-7.1,23.84-9.58,13.5-2.27,35-1.26,60.91,16.34,25,17,44.41,21.64,56.29,22.56,12.75,1,19.77-2,19.84-2.05a4,4,0,0,1,3.29,7.29Z",
+  bone: "M228.6,63.46A31.83,31.83,0,0,0,204.1,52H204a32,32,0,1,0-59.17,17,4,4,0,0,1-.51,5L74,144.36a4,4,0,0,1-5,.51A32,32,0,1,0,51.9,204H52a32,32,0,1,0,59.16-17,4,4,0,0,1,.51-5L182,111.64a4,4,0,0,1,5-.51A32,32,0,0,0,228.6,63.46ZM222.1,99.8a24,24,0,0,1-30.8,4.55A12,12,0,0,0,176.37,106L106,176.37a12,12,0,0,0-1.63,14.93,24,24,0,1,1-44.09,9,4,4,0,0,0-1.12-3.45,4,4,0,0,0-2.83-1.17,4.32,4.32,0,0,0-.62.05,24,24,0,1,1,9-44.09A12,12,0,0,0,79.63,150L150,79.63a12,12,0,0,0,1.63-14.93,24,24,0,1,1,44.09-9,4,4,0,0,0,4.57,4.57A24,24,0,0,1,222.1,99.8Z",
+  personArmsSpread: "M128,68a28,28,0,1,0-28-28A28,28,0,0,0,128,68Zm0-48a20,20,0,1,1-20,20A20,20,0,0,1,128,20Zm99.6,68.57A15.7,15.7,0,0,0,212,76H44a16,16,0,0,0-6.7,30.52l.06,0,53.89,23.73-21.92,83.3a16,16,0,0,0,7.9,20.91A15.82,15.82,0,0,0,84,236a16,16,0,0,0,14.42-9.07L128,176l29.58,51a16,16,0,0,0,29.07-13.35l-21.92-83.3,54-23.76A15.69,15.69,0,0,0,227.6,88.57ZM215.39,99.23l-57,25.11a4,4,0,0,0-2.26,4.68L179,215.94a4.12,4.12,0,0,0,.24.67,8,8,0,0,1-3.87,10.63,8,8,0,0,1-10.63-3.87,3,3,0,0,0-.16-.31L131.46,166a4,4,0,0,0-6.92,0L91.42,223.06a3,3,0,0,0-.16.31,8,8,0,1,1-14.5-6.76,4.12,4.12,0,0,0,.24-.67L99.87,129a4,4,0,0,0-2.26-4.68l-57-25.09A8,8,0,0,1,44,84H212a8,8,0,0,1,3.41,15.23Z",
 };
 
-// Same stroke family as BENEFIT_ICONS, one bespoke icon per "who benefits"
-// card on the ABM page. None reuse a home-page icon; each is drawn for its
-// own subject.
+// Icon choices per card, mapped from Phosphor Icons "Thin" weight (see
+// PHOSPHOR_PATHS above). None repeat within the same page.
+const BENEFIT_ICONS = {
+  freedom: phosphorIcon(PHOSPHOR_PATHS.personSimpleTaiChi), // Freedom from Pain & Injury
+  sleep: phosphorIcon(PHOSPHOR_PATHS.moonStars), // Reduce Stress & Improve Sleep
+  mobility: phosphorIcon(PHOSPHOR_PATHS.brain), // Increase Mobility & Better Brain Function
+};
+
 const ABM_ICONS = {
-  // Stroke / brain trauma recovery: an open head profile with a small
-  // reconnecting spark inside, new pathways forming.
-  brain: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-    <path d="M20 47 C10 42, 7 30, 12 21 C17 11, 30 8, 39 13 C48 18, 50 28, 45 37 C42 42, 37 46, 30 46" ${ICON_ATTRS}/>
-    <path d="M24 24 L31 29 L25 34 L33 40" ${ICON_ATTRS}/>
-  </svg>`,
-  // Children with special needs: a small hand cradled inside a larger,
-  // open, cupped curve.
-  child: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-    <path d="M8 28 C8 41, 18 50, 32 50 C46 50, 56 41, 56 28" ${ICON_ATTRS}/>
-    <path d="M23 27 C23 21, 27 17, 32 17 C37 17, 41 21, 41 27" ${ICON_ATTRS}/>
-  </svg>`,
-  // Chronic conditions (Parkinson's, MS): a steady, rooted upright form,
-  // settled rather than rigid.
-  rooted: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-    <path d="M32 8 C29 8, 27 10.5, 27 13.5 C27 16.5, 29 19, 32 19 C35 19, 37 16.5, 37 13.5 C37 10.5, 35 8, 32 8 Z" ${ICON_ATTRS}/>
-    <path d="M32 19 L32 43" ${ICON_ATTRS}/>
-    <path d="M13 50 C19 44, 25 50, 32 45 C39 50, 45 44, 51 50" ${ICON_ATTRS}/>
-  </svg>`,
-  // High performers (musicians, dancers, athletes): one flowing arc in
-  // motion with two motion ticks trailing it, a leap or a held note.
-  flow: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-    <path d="M9 54 C18 40, 27 24, 44 12" ${ICON_ATTRS}/>
-    <path d="M36 20 C40 17, 44 17, 47 20" ${ICON_ATTRS}/>
-    <path d="M42 12 C45 10, 48 10, 50 12" ${ICON_ATTRS}/>
-  </svg>`,
-  // Back, neck and joint pain: a gentle, easing S-curve spine, drawn wide
-  // rather than a narrow squiggle.
-  spine: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-    <path d="M38 8 C22 14, 34 22, 36 28 C38 34, 20 38, 26 46 C29 50, 38 52, 34 58" ${ICON_ATTRS}/>
-  </svg>`,
-  // Movement limitations / vitality: two radiating, concentric quarter-arc
-  // ripples, increasing ease reaching further out.
-  vitality: `<svg class="benefit-icon" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-    <path d="M30 56 A18 18 0 0 1 12 38" ${ICON_ATTRS}/>
-    <path d="M54 56 A42 42 0 0 1 12 14" ${ICON_ATTRS}/>
-  </svg>`,
+  brain: phosphorIcon(PHOSPHOR_PATHS.brain), // stroke / brain trauma recovery
+  child: phosphorIcon(PHOSPHOR_PATHS.baby), // children with special needs
+  rooted: phosphorIcon(PHOSPHOR_PATHS.heartbeat), // chronic conditions (Parkinson's, MS)
+  flow: phosphorIcon(PHOSPHOR_PATHS.personSimpleRun), // high performers / musicians / dancers / athletes
+  spine: phosphorIcon(PHOSPHOR_PATHS.bone), // back, neck and joint pain
+  vitality: phosphorIcon(PHOSPHOR_PATHS.personArmsSpread), // movement limitations / vitality
 };
 
 function quote(text, attr) {

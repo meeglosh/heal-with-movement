@@ -46,6 +46,17 @@ occurrence.
 | `favicon.ico` | `public/favicon.ico` | Resolved — regenerated as a proper multi-size (16/32/48/64px) .ico from the brand mark. |
 | French translations | all pages | The EN/FR toggle has been removed from the visible header (desktop and mobile menu) at the user's request, since there's no French copy yet. The underlying scaffold is still in the codebase, just unreferenced: `public/js/main.js` still has the `data-lang` click handler (persists choice to `localStorage`, swaps the `lang` attribute), and `.lang-toggle`/`.lang-toggle button` styles are still in `public/css/styles.css`. **Re-enable later** by adding the `.lang-toggle` markup back into `header()` in `build.mjs` (was in both `.nav-actions` and the mobile `.nav-mobile-only` block) once French copy exists. |
 
+## Third-party assets
+
+**Icons**: the nine card icons on the home page (Freedom from Pain & Injury,
+Reduce Stress & Improve Sleep, Increase Mobility & Better Brain Function) and
+the ABM page ("Who benefits from this practice") are [Phosphor
+Icons](https://phosphoricons.com) (Thin weight), © Phosphor Icons, [MIT
+licensed](https://github.com/phosphor-icons/core/blob/main/LICENSE). SVG path
+data was downloaded once from the `@phosphor-icons/core` package via jsdelivr
+and inlined directly in `build.mjs` (`PHOSPHOR_PATHS`), so the site has no
+runtime dependency on an icon font or package.
+
 ## Booking → intake flow (decision made, documented here per task instructions)
 
 **Approach chosen:** the Book page links to the intake form from a visible
