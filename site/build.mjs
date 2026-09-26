@@ -349,6 +349,11 @@ function testimonialSequence() {
 }
 
 // ---------- HOME ----------
+const scrollCraftVersion = createHash("sha256")
+  .update(readFileSync(join(__dirname, "public/js/scroll-craft.js")))
+  .digest("hex")
+  .slice(0, 12);
+
 const home = page({
   path: "/",
   title: "Heal with Movement | Anat Baniel Method NeuroMovement with Heidi Rood",
@@ -443,7 +448,7 @@ ${testimonialSequence()}
   extraHead: `<link rel="preload" as="image" href="/assets/img/hero-1672.jpg" imagesrcset="/assets/img/hero-1000.jpg 1000w, /assets/img/hero-1672.jpg 1672w" imagesizes="100vw" fetchpriority="high">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>`,
-  extraScripts: `<script src="/js/scroll-craft.js" defer></script>`,
+  extraScripts: `<script src="/js/scroll-craft.js?v=${scrollCraftVersion}" defer></script>`,
 });
 
 // ---------- ABOUT ----------

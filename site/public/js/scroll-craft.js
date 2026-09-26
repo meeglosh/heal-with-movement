@@ -20,11 +20,9 @@
     var isMobile = window.matchMedia("(max-width: 760px)").matches;
 
     // ---------------- Testimonials: pinned stops ----------------
-    // Same "continuous crossfade tied to scroll progress" mechanism as the
-    // signature stages, but a distinct composition (see CSS): light canvas,
-    // side dot index instead of a drawn line, and a gentle snap to each
-    // stop so the section doesn't leave a quote frozen mid-crossfade if the
-    // visitor stops scrolling between stops.
+    // Each quote holds on its own for most of its scroll slot. Near the end
+    // of the slot it fades out, leaves a short clear beat, then the next quote
+    // fades in. The overlap-free handoff keeps both quotes from competing.
     var testSpacer = document.getElementById("testimonial-pin-spacer");
     var testPin = document.getElementById("testimonial-pin");
     var testStages = document.querySelectorAll(".testimonial-stage");
@@ -34,32 +32,57 @@
     if (testSpacer && testPin && testStages.length) {
       document.documentElement.classList.add("js-testimonials-pinned");
       var n = testStages.length;
-      ScrollTrigger.create({
+      if (n === 1) {
+        testStages[0].style.opacity = "1";
+        testStages[0].classList.add("is-active");
+      } else ScrollTrigger.create({
         trigger: testSpacer,
         start: "top top",
         end: "+=" + (isMobile ? "180%" : "320%"),
         pin: testPin,
         scrub: true,
         snap: {
-          snapTo: 1 / (n - 1),
+          // Snap only if the visitor stops during a transition. Holds remain
+          // wherever the visitor leaves them, and endpoints stay reachable.
+          snapTo: function (value) {
+            if (value <= 0 || value >= 1) return value;
+            var position = value * n;
+            var index = Math.min(n - 1, Math.floor(position));
+            var local = position - index;
+            if (index > 0 && local < 0.06) return (index + 0.5) / n;
+            if (index < n - 1 && local >= 0.9) return (index + 0.5) / n;
+            return value;
+          },
           duration: { min: 0.3, max: 0.8 },
           ease: "power1.inOut",
         },
         onUpdate: function (self) {
           var p = self.progress;
-          // Stage centers are spaced at i/(n-1) (0, .25, .5, .75, 1 for
-          // n=5), the same points the snap config above snaps to, so the
-          // scroll always settles exactly on a full-opacity stage rather
-          // than mid-crossfade between two.
-          var half = 1 / (n - 1);
+          // Each quote owns one equal slot. It fades in during the first 6%,
+          // holds alone through 90%, then fades out during the next 4%; a
+          // clear beat separates it from the next slot. The final quote also
+          // gets a full-width hold before the pinned sequence ends.
+          var position = p * n;
+          var current = Math.min(n - 1, Math.floor(position));
+          var local = position - current;
+          var opacities = new Array(n).fill(0);
+
+          if (current === 0 || local >= 0.06) {
+            opacities[current] = 1;
+          } else {
+            opacities[current] = local / 0.06;
+          }
+          if (current < n - 1 && local >= 0.9) {
+            opacities[current] = Math.max(0, 1 - (local - 0.9) / 0.04);
+          }
+
           testStages.forEach(function (stage, i) {
-            var mid = i / (n - 1);
-            var dist = Math.abs(p - mid);
-            var opacity = Math.max(0, 1 - dist / half);
+            var opacity = opacities[i];
             stage.style.opacity = String(opacity);
             stage.classList.toggle("is-active", opacity > 0.5);
           });
-          var activeDot = Math.round(p * (n - 1));
+          var activeDot = opacities.findIndex(function (opacity) { return opacity > 0.5; });
+          if (activeDot < 0) activeDot = current;
           testDots.forEach(function (dot, i) {
             dot.classList.toggle("is-active", i === activeDot);
           });
