@@ -40,8 +40,9 @@ function head({ title, description, path, ogImage = "/assets/img/og-image.jpg", 
 <meta name="theme-color" content="#3D2447">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..600,0..100,0..1;1,9..144,300..600,0..100,0..1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..600,0..100,0..1;1,9..144,300..600,0..100,0..1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/editorial.css">
 ${jsonLd}
 <!-- Privacy-friendly analytics placeholder: swap data-domain / src for your Plausible or Cloudflare Web Analytics snippet -->
 <script defer data-domain="healwithmovement.com" src="https://plausible.io/js/script.js" data-placeholder="true"></script>
@@ -184,7 +185,7 @@ function page({ path, title, description, active, body, jsonLd = "", ogImage, ex
 <head>
 ${head({ title, description, path, jsonLd, ogImage })}${extraHead}
 </head>
-<body>
+<body class="${path === "/" ? "page-home" : "page-interior"}">
 ${header(active)}
 <main id="main">
 ${body}
@@ -360,7 +361,7 @@ ${heroSection({
   eyebrow: "Heal with Movement · Heidi Rood",
   h1: "Freedom from pain, through your body's own <em>intelligence</em>.",
   sub: "Gentle Anat Baniel Method lessons for children and adults, in Vermont, Montreal, and online.",
-  ctas: `<a class="btn btn-primary breathe" href="/book.html">Book a Session</a><a class="btn btn-ghost" href="/abm.html" style="color:#fff; border-color:rgba(255,255,255,.55)">What is ABM?</a>`,
+  ctas: `<a class="btn btn-primary breathe" href="/book.html">Book a Session</a><a class="btn btn-ghost" href="/abm.html" >What is ABM?</a>`,
   pinned: true,
 }) }
 
