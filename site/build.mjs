@@ -70,7 +70,7 @@ const LOCAL_BUSINESS_JSONLD = `<script type="application/ld+json">
     {"@type":"City","name":"Montreal, QC"},
     {"@type":"AdministrativeArea","name":"Chittenden County, VT"}
   ],
-  "priceRange": "{{PRICE}}",
+  "priceRange": "CAD $40–$85 per session; USD $80 per session or $90 for 6 virtual group credits",
   "founder": {"@type":"Person","name":"Heidi Rood","jobTitle":"Anat Baniel Method NeuroMovement Practitioner"},
   "sameAs": []
 }
@@ -134,12 +134,6 @@ function footer() {
             <span style="font-family:var(--font-display); font-size:1.05rem;">Heal with Movement</span>
           </div>
           <p style="opacity:.75; max-width:34ch;">Anat Baniel Method NeuroMovement with Heidi Rood, gentle, precise movement work for children and adults, in Montreal QC, Chittenden County VT, and online.</p>
-          <form class="newsletter" action="#" method="post" onsubmit="return false;" aria-label="Newsletter signup">
-            <label class="visually-hidden" for="newsletter-email">Email address</label>
-            <input type="email" id="newsletter-email" placeholder="you@email.com" required>
-            <button class="btn btn-primary btn-small" type="submit">Sign up</button>
-          </form>
-          <p class="hint" style="opacity:.6; font-size:.78rem; margin-top:8px;">Newsletter is a placeholder, connect to Mailchimp/Buttondown before launch.</p>
         </div>
         <div>
           <h4>Explore</h4>
@@ -469,11 +463,15 @@ const about = page({
     <div class="settle">
       <p class="eyebrow">About</p>
       <h1>Heidi Rood</h1>
-      <p>Heidi Rood is an Anat Baniel Method NeuroMovement (ABMNM) practitioner working with children and adults in Montreal, Quebec; Chittenden County, Vermont; and virtually with clients everywhere.</p>
-      <p>Her approach is quiet, attentive, and precise: small, varied movements that give the brain new information to work with, rather than force or repetition. Clients describe her sessions as gentle, professional, and genuinely transformative.</p>
-      <div class="skip-note">
-        <strong>Biography details to add:</strong> Heidi's personal training history, certification details, and years of practice. <span class="placeholder-tag">PLACEHOLDER</span>
-      </div>
+      <p>Drawn to movement as a child, Heidi Rood started taking dance lessons at the tender age of five. Her training became professional when she became a young teen, leading to a career in ballet that spanned 13 years. After dancing in companies both in the United States and Canada, she retired and settled in Montreal, Quebec where she raised her son.</p>
+      <p>Looking for a new career path forward, Heidi discovered the Anat Baniel Method (ABM) Neuromovement &reg;. Intrigued by ABM’s use of movement to wake up and rewire the brain, she began taking lessons and experienced firsthand the power of this unique modality. Fitting perfectly with her background in dance, she decided to pursue her certification.</p>
+      <p>Now certified, Heidi Rood is an Anat Baniel Method NeuroMovement (ABMNM) practitioner working with children and adults in Montreal, Quebec; Chittenden County, Vermont and virtually with clients everywhere.</p>
+      <h2>Credentials</h2>
+      <ul style="padding-left:1.2em; margin:0; color:var(--c-ink-soft);">
+        <li>ABM Certified Neuromovement &reg; Transformational Movement Lesson Teacher</li>
+        <li>ABM Certified Neuromovement Practitioner</li>
+        <li>BS in Dance and English Literature</li>
+      </ul>
     </div>
     <div class="settle">
       <img src="/assets/img/heidi-rood-portrait.jpg" alt="Black-and-white portrait of Heidi Rood" width="593" height="751" loading="lazy" decoding="async" style="display:block; width:100%; height:auto; border-radius:2px;">
@@ -598,14 +596,14 @@ const testimonials = page({
 const services = page({
   path: "/services.html",
   title: "Services & Pricing | Heal with Movement",
-  description: "Private ABM NeuroMovement lessons in Montreal QC and Chittenden County VT, plus one-on-one video lessons worldwide and virtual group classes. Pricing to be confirmed with Heidi Rood.",
+  description: "In-person and virtual Anat Baniel Method NeuroMovement lessons with Heidi Rood. Montreal private lessons CAD $85, Vermont USD $80, virtual private CAD $40, and online group classes USD $90 for six credits.",
   active: "/services.html",
   body: `
 <section class="section">
   <div class="wrap">
     <p class="eyebrow">Services &amp; pricing</p>
     <h1>Choose the way you'd like to work together.</h1>
-    <p style="max-width:60ch; color:var(--c-ink-soft);">Session prices and the cancellation notice window are being confirmed with Heidi. Every private lesson is 60 minutes.</p>
+    <p style="max-width:60ch; color:var(--c-ink-soft);">Every private lesson is 60 minutes, with the same price for adults and children. In-person sessions are invoiced after the session; virtual services are prepaid by card.</p>
   </div>
 </section>
 
@@ -615,31 +613,37 @@ const services = page({
       <div class="card settle">
         <h3>Montreal Private Lesson</h3>
         <p>In-person, one-on-one, Montreal, QC.</p>
-        <p class="stat">{{PRICE}}</p>
+        <p class="stat">CAD $85</p>
         <p class="hint">Session length: 60 minutes</p>
+        <p class="hint">In-person; invoiced after the session.</p>
         <a class="btn btn-primary btn-small" href="/book.html?location=montreal">Book Montreal</a>
       </div>
       <div class="card settle">
         <h3>Vermont Private Lesson</h3>
         <p>In-person, one-on-one, Chittenden County, VT.</p>
-        <p class="stat">{{PRICE}}</p>
+        <p class="stat">USD $80</p>
         <p class="hint">Session length: 60 minutes</p>
-        <a class="btn btn-primary btn-small" href="/book.html?location=vermont">Book Vermont</a>
+        <p class="hint">In-person; invoiced after the session.</p>
+        <a class="btn btn-primary btn-small" href="mailto:heidi@healwithmovement.com?subject=Vermont%20lessons">Ask about Vermont lessons</a>
       </div>
       <div class="card settle">
         <h3>Virtual Private Lesson</h3>
         <p>One-on-one by video, wherever you are in the world.</p>
-        <p class="stat">Price to be confirmed</p>
+        <p class="stat">CAD $40</p>
         <p class="hint">Session length: 60 minutes</p>
         <p class="hint">Monday–Friday, 10am–5pm Eastern. Booking times are shown in your local time zone.</p>
-        <a class="btn btn-primary btn-small" href="/book.html?location=virtual_private">Book Virtual Private</a>
+        <p class="hint">Prepaid by card.</p>
+        <a class="btn btn-primary btn-small" href="mailto:heidi@healwithmovement.com?subject=Virtual%20private%20lessons">Ask about virtual private lessons</a>
       </div>
       <div class="card settle">
         <h3>Virtual Group Class</h3>
         <p>Live online group session.</p>
-        <p class="stat">{{PRICE}}</p>
+        <p class="stat">USD $90 / 6 credits</p>
         <p class="hint">Session length: 60 minutes</p>
-        <a class="btn btn-primary btn-small" href="/book.html?location=virtual">Book Group Class</a>
+        <p class="hint">Credits do not expire; no drop-in. Prepaid by card.</p>
+        <p class="hint">Tuesdays at 7pm and Wednesdays at noon Eastern · Ages 12+ · Up to 50 participants.</p>
+        <p class="hint">Classes begin October 13, 2026. Online registration opening soon.</p>
+        <a class="btn btn-primary btn-small" href="mailto:heidi@healwithmovement.com?subject=Virtual%20group%20classes">Ask about group classes</a>
       </div>
     </div>
   </div>
@@ -723,7 +727,6 @@ const contact = page({
       <ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:.8em;">
         <li><strong>Email:</strong> <a href="mailto:heidi@healwithmovement.com">heidi@healwithmovement.com</a></li>
         <li><strong>Locations:</strong> Montreal, QC &amp; Chittenden County, VT (in-person) · Virtual (anywhere)</li>
-        <li><strong>Phone:</strong> {{PHONE}}</li>
       </ul>
     </div>
     <form class="card settle" action="#" method="post" onsubmit="return false;">
@@ -776,7 +779,7 @@ const privacy = legalPage({
   body: `
 <p>Heal with Movement ("we", "us") respects your privacy. This policy explains what information we collect through healwithmovement.com and how we use it.</p>
 <h3>Information we collect</h3>
-<p>Contact form and newsletter submissions (name, email, message); child intake form submissions (health history and contact details, used only to prepare for sessions); booking information collected by our scheduling provider, Cal.com, and payment information collected by Stripe (we do not store card numbers); anonymized analytics data via our privacy-friendly analytics provider.</p>
+<p>Contact form submissions (name, email, message); child intake form submissions (health history and contact details, used only to prepare for sessions); booking information collected by our scheduling provider, Cal.com, and payment information collected by Stripe (we do not store card numbers); anonymized analytics data via our privacy-friendly analytics provider.</p>
 <h3>How we use it</h3>
 <p>To respond to inquiries, schedule and prepare for sessions, and improve the site. We do not sell personal information.</p>
 <h3>Residents of Quebec (Law 25)</h3>
