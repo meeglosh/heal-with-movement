@@ -14,7 +14,7 @@ npm run dev -- --port 8788
 
 Open http://localhost:8788/book. A plain static server cannot run the booking API.
 
-The linked Neon project is `billowing-river-83678674`. `neon.ts` enables managed authentication. `neon deploy` deploys Neon configuration, not the website. The `dev-client-booking` branch is isolated from production. It was recreated from the (then empty) production branch on October 6, 2026, has no expiry, and has its own Neon Auth endpoint. Production's `portal_migrations` table was empty although migrations 001–005 were applied there; they were recorded on the development branch before applying 006, and production needs the same before `scripts/migrate.mjs` can run against it.
+The linked Neon project is `billowing-river-83678674`. `neon.ts` enables managed authentication. `neon deploy` deploys Neon configuration, not the website. The `dev-client-booking` branch is isolated from production. It was recreated from the (then empty) production branch on October 6, 2026, has no expiry, and has its own Neon Auth endpoint. Migrations 001–005 had been applied without being recorded; on October 6, 2026 they were recorded in `portal_migrations` on both branches, so `scripts/migrate.mjs` now runs normally. `.env.production` is JSON, so pass its `DATABASE_URL` to the script explicitly.
 
 The development connection was pulled into ignored `site/.env.development`. Runtime secrets belong in ignored `site/.dev.vars`. Never commit either file. To apply the portal schema to a selected branch:
 
@@ -77,7 +77,7 @@ Create a webhook endpoint at `https://healwithmovement.com/api/stripe/webhook` f
 
 Use the GAPCO LLC Cloudflare account and Pages project `heal-with-movement`. Git build settings: root `site`, build command `npm run build`, output `public`, production branch `main`. Install npm dependencies including build dependencies. `nodejs_compat` is configured in `wrangler.toml`.
 
-Production booking is configured on the `production` Neon branch and Pages environment. Migrations `001_portal.sql` through `005_virtual_private.sql` are applied there (`006_payments.sql` is not yet); both private-lesson event IDs, the runtime bindings, the canonical trusted origin, and the signed Cal.com webhook are configured. The ignored `site/.env.production` file is a mode-600 local backup of the production secret values; keep it out of version control and back it up securely before replacing this machine. To deploy future changes, keep production bindings and database schema in sync, then run the tests and Worker bundle check:
+Production booking is configured on the `production` Neon branch and Pages environment. Migrations `001_portal.sql` through `006_payments.sql` are applied there; both private-lesson event IDs, the runtime bindings, the canonical trusted origin, and the signed Cal.com webhook are configured. The ignored `site/.env.production` file is a mode-600 local backup of the production secret values; keep it out of version control and back it up securely before replacing this machine. To deploy future changes, keep production bindings and database schema in sync, then run the tests and Worker bundle check:
 
 ```sh
 npm test

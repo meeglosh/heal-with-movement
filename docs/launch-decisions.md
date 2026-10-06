@@ -67,8 +67,8 @@ them. See [open implementation and follow-up items](#open-items) before launch.
 
 - Stripe checkout is built and uses a test-mode key: virtual private lessons
   are paid at booking, and group classes use six-class credit packages. Before
-  launch it needs migration `006_payments.sql` in production, a Stripe webhook
-  endpoint, and a live-mode key.
+  launch it needs a live-mode key and a live-mode webhook endpoint, then a
+  deploy. The payments migration is applied in production.
 - Cancellations at least 24 hours ahead and Heidi's rejections now refund
   the lesson or return the credit automatically; later ones forfeit. Still
   missing: a staff tool to waive a forfeit by restoring a credit (refunds can
