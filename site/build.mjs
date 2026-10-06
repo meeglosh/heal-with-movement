@@ -658,7 +658,7 @@ const services = page({
     </div>
     <div class="settle">
       <h2>Cancellation policy</h2>
-      <p>Heal with Movement reserves the right to charge the full applicable treatment fee for missed or cancelled appointments if <strong>{{CANCELLATION_HOURS}} hours'</strong> notice has not been received. (Sourced from the intake form's existing 24-hour language, confirm this still applies to all session types before launch.)</p>
+      <p>Please give at least <strong>24 hours'</strong> notice to cancel or reschedule. Cancel in time and prepaid sessions are refunded, or your class credit is returned. Later cancellations and missed sessions are charged in full, unless Heidi waives the charge, for example in an emergency.</p>
       <a class="btn btn-ghost" href="/cancellation.html">Read the full policy</a>
     </div>
   </div>
@@ -689,9 +689,9 @@ const faqItems = [
   ["Is this covered by insurance?", "{{INSURANCE_INFO}}, please confirm coverage with your provider; Heal with Movement can provide a receipt for services upon request."],
   ["What ages and conditions do you work with?", "Heidi works with children with developmental disabilities and special needs, adults recovering from injury or stroke, people with chronic conditions such as Parkinson's and multiple sclerosis, high performers, and anyone seeking greater ease of movement."],
   ["How do I book for my child?", "Sign in and add your child to your account. For in-person sessions, you’ll complete the child intake form as part of booking, and Heidi reviews every intake ahead of a first lesson with a new child client. Virtual sessions do not need an intake form."],
-  ["What is the cancellation policy?", "Heal with Movement reserves the right to charge the full session fee for cancellations made with less than {{CANCELLATION_HOURS}} hours' notice. See the full Cancellation Policy page for details."],
+  ["What is the cancellation policy?", "Please give at least 24 hours' notice. Cancel in time and prepaid sessions are refunded, or your group class credit is returned. Later cancellations and missed sessions are charged in full, unless Heidi waives the charge, for example in an emergency. See the full Cancellation Policy page for details."],
   ["Do you offer virtual sessions?", "Yes. You can book a one-on-one private lesson by video from anywhere in the world, or join a live online group class."],
-  ["Where are in-person sessions held?", "In-person private lessons are offered in Montreal, Quebec and Chittenden County, Vermont. {{STUDIO_ADDRESS}}"],
+  ["Where are in-person sessions held?", "In-person private lessons are offered in Montreal, Quebec and Chittenden County, Vermont. The full address is shared with you after you book."],
 ];
 const faq = page({
   path: "/faq.html",
@@ -817,11 +817,19 @@ const cancellation = legalPage({
   body: `
 <p>We know plans change. Here's what to expect if you need to reschedule or cancel.</p>
 <h3>Notice window</h3>
-<p>Heal with Movement reserves the right to charge the full applicable session fee for missed or cancelled appointments if at least <strong>{{CANCELLATION_HOURS}} hours'</strong> notice has not been received. This figure is carried over from Heidi's existing intake form language; confirm it still applies uniformly across Montreal, Vermont, and virtual group sessions before publishing.</p>
+<p>Please give at least <strong>24 hours'</strong> notice to cancel or reschedule any session: Montreal, Vermont, virtual private, or virtual group.</p>
+<h3>Cancelling in time</h3>
+<ul>
+<li><strong>Virtual private lessons and group drop-ins</strong> are paid by card when you book. Cancel at least 24 hours ahead and your payment is refunded in full.</li>
+<li><strong>Group class credits</strong>: cancel at least 24 hours ahead and the credit returns to your account for a future class. Credits never expire.</li>
+<li><strong>In-person sessions</strong> in Montreal and Vermont are invoiced after your visit, so there is nothing to pay if you cancel in time.</li>
+</ul>
+<h3>Late cancellations and missed sessions</h3>
+<p>If you cancel with less than 24 hours' notice, or miss a session, the payment or class credit is forfeited, and in-person sessions are invoiced in full. Heidi may waive this, for example in an emergency; when she does, she can return your credit for a future class or refund your payment in full.</p>
+<h3>If Heidi cancels</h3>
+<p>If Heidi needs to cancel, you pay nothing: any payment is refunded or your class credit is returned, and she'll offer to reschedule.</p>
 <h3>How to cancel or reschedule</h3>
-<p>Use the manage-booking link in your Cal.com confirmation email, or contact <a href="mailto:heidi@healwithmovement.com">heidi@healwithmovement.com</a> directly.</p>
-<h3>Group classes</h3>
-<p>{{GROUP_CANCELLATION_TERMS}}</p>
+<p>Use the link in your booking confirmation email, or contact <a href="mailto:heidi@healwithmovement.com">heidi@healwithmovement.com</a>.</p>
 `,
 });
 
@@ -1013,7 +1021,7 @@ const intake = page({
           <p>The Anat Baniel Method® NeuroMovement® is not a substitute for professional medical advice or a medical exam. You should regularly consult a doctor in all matters relating to physical or mental health, particularly concerning any symptoms that may require diagnosis or medical attention.</p>
           <p>Heidi Rood and/or Heal with Movement make no warranties or guarantees concerning any particular outcome, result, or improvement from participation in functional synthesis and/or movement lessons, and are not responsible for any direct, indirect, consequential, special, or other damages that may result from participation.</p>
           <p>By signing below, I confirm my consent to treatment for my child, understanding that I may withdraw consent at any time, at which point treatment will be stopped.</p>
-          <p><strong>Please note:</strong> Heal with Movement reserves the right to charge the full applicable treatment fee for missed or cancelled appointments if {{CANCELLATION_HOURS}} hours' notice has not been received.</p>
+          <p><strong>Please note:</strong> Heal with Movement reserves the right to charge the full applicable treatment fee for missed or cancelled appointments if 24 hours' notice has not been received.</p>
         </div>
         <div class="field">
           <label><input type="checkbox" name="consent" required> I have read and understood the disclaimer above, and I consent to treatment for my child.</label>

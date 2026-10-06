@@ -9,17 +9,14 @@ occurrence.
 | Token | Where it appears | Needed |
 |---|---|---|
 | `{{PRICE}}` | services.html (x3), JSON-LD `priceRange` | Session price for Vermont private, Montreal private, virtual group; virtual private price is shown as “Price to be confirmed” |
-| `{{CANCELLATION_HOURS}}` | services.html, cancellation.html, protected intake form | Notice window in hours. **Note:** the original intake form doc states "24 hours" for missed/cancelled appointments — this has been used as the working default in copy, but confirm it applies to every service (private VT/Montreal, virtual group) before removing the placeholder. |
 
 ## Contact & legal
 
 | Token | Where it appears | Needed |
 |---|---|---|
 | `{{PHONE}}` | contact.html | Public phone number, if any |
-| `{{STUDIO_ADDRESS}}` | faq.html | Street address / neighborhood detail for in-person sessions, if Heidi wants it public |
 | `{{INSURANCE_INFO}}` | faq.html | Whether sessions are covered by insurance / HSA-eligible |
 | `{{GOVERNING_LAW_JURISDICTION}}` | terms.html | Which jurisdiction's law governs the Terms (VT, QC, or both) |
-| `{{GROUP_CANCELLATION_TERMS}}` | cancellation.html | Any different cancellation terms for group classes vs. private sessions |
 | `{{LEGAL_DATE}}` | privacy.html, terms.html, cancellation.html, disclaimer.html | "Last updated" date once reviewed |
 
 ## Integrations
