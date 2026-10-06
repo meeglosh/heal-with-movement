@@ -240,3 +240,9 @@
 .portal-group-times li {
   font-size: 0.92rem;
 }
+/* Headings receive focus after each step so screen readers announce the new
+   screen; they are not interactive, so no focus ring is shown. */
+.portal-panel [tabindex="-1"]:focus,
+.portal-panel [tabindex="-1"]:focus-visible {
+  outline: none;
+}
