@@ -2,7 +2,12 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
-import { portal, calWebhook, stripeWebhook } from "../server/portal.js";
+import {
+  portal,
+  calWebhook,
+  stripeWebhook,
+  publicGroupTimes,
+} from "../server/portal.js";
 import { PRICES, verifyStripeSignature } from "../server/stripe.js";
 import {
   encryptIntake,
@@ -945,6 +950,8 @@ async function groupUser(id) {
   );
   return { who, flow };
 }
+// Booking tests run relative to today, so they ignore the launch date.
+env.GROUP_FIRST_CLASS = "2000-01-01";
 const later = (days) => ({
   start: new Date(Date.now() + days * 86400000).toISOString(),
   timeZone: "UTC",
@@ -1071,5 +1078,46 @@ test("Stripe webhooks require a fresh valid signature and settle the payment", a
   await post(await sign(now));
   await post(await sign(now));
   assert.equal((await data("/me", undefined, who)).credits, 6);
+});
+
+test("group times are public, start October 13, and mark full classes", async () => {
+  delete env.GROUP_FIRST_CLASS;
+  const slots = {
+    "2026-10-07": [{ start: "2026-10-07T12:00:00.000-04:00", seatsRemaining: 50 }],
+    "2026-10-13": [{ start: "2026-10-13T19:00:00.000-04:00", seatsRemaining: 0 }],
+    "2026-10-14": [{ start: "2026-10-14T12:00:00.000-04:00", seatsRemaining: 12 }],
+  };
+  let requested;
+  const groupCal = {
+    ...cal,
+    slots: async (id, start, end) => {
+      requested = { id, start, end };
+      return slots;
+    },
+  };
+  const response = await publicGroupTimes(
+    new Request("https://test.invalid/api/public/group-times"),
+    env,
+    { db, cal: groupCal },
+  );
+  assert.equal(requested.id, 100);
+  assert.ok(Date.parse(requested.end) - Date.parse(requested.start) >= 59 * 86400000);
+  assert.deepEqual((await response.json()).classes, [
+    { start: "2026-10-13T23:00:00.000Z", full: true },
+    { start: "2026-10-14T16:00:00.000Z", full: false },
+  ]);
+  const { who, flow } = await groupUser("group-viewer");
+  const portalSlots = await (
+    await request(
+      `/flows/${flow.id}/slots?${new URLSearchParams({
+        start: new Date().toISOString(),
+        end: new Date(Date.now() + 7 * 86400000).toISOString(),
+      })}`,
+      undefined,
+      who,
+      { cal: groupCal },
+    )
+  ).json();
+  assert.deepEqual(Object.keys(portalSlots.slots), ["2026-10-13", "2026-10-14"]);
 });
 

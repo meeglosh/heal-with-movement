@@ -81,10 +81,6 @@ them. See [open implementation and follow-up items](#open-items) before launch.
   default until Vermont is explicitly configured.
 - The 12+ child age threshold is provisional, and parent participation is
   undecided.
-- The current group booking flow requires sign-in and completed intake before
-  showing slots; Heidi's decision is to show the public group timetable before
-  either. The current shared Cal.com event also allows up to 1,000 attendees,
-  while Heidi's chosen public limit is 50.
 - The current private-child configuration requests approval for every
   booking. Supporting first-booking-only approval requires implementation and
   matching Cal.com configuration before this decision can be honored.
@@ -105,6 +101,5 @@ implemented and verified before they are represented as active booking rules.
 The website backend currently rejects paid Cal.com event types until checkout
 is implemented. The production scheduler still needs configuration to match
 the decisions above; the current setup uses the same Monday–Friday,
-10:00 a.m.–5:00 p.m. Eastern schedule across services, permits up to 1,000
-group seats, has no payment or credit support, and requests approval for every
+10:00 a.m.–5:00 p.m. Eastern schedule across services, has no payment or credit support, and requests approval for every
 private child booking.

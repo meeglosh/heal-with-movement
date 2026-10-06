@@ -16,6 +16,15 @@ import {
 import { adultIntakeForm } from "./adult-intake-form.js";
 import { intakeForm } from "./intake-form.js";
 
+// Heidi's group classes start on this date; Cal.com's weekly schedule
+// would otherwise offer earlier weeks.
+export const GROUP_FIRST_CLASS = "2026-10-13";
+const firstClass = (env) => env.GROUP_FIRST_CLASS || GROUP_FIRST_CLASS;
+function groupDays(slots, env) {
+  return Object.fromEntries(
+    Object.entries(slots).filter(([day]) => day >= firstClass(env)),
+  );
+}
 function parse(schema, value) {
   const result = schema.safeParse(value);
   if (!result.success)
@@ -335,7 +344,8 @@ export async function portal(
           Date.parse(end) - Date.parse(start) > 15 * 86400000
         )
           throw new HttpError(400, "Choose a date range of up to two weeks.");
-        const data = await cal.slots(eid, start, end, tz);
+        let data = await cal.slots(eid, start, end, tz);
+        if (flow.service === "virtual") data = groupDays(data, env);
         return json({
           slots: flow.child_id
             ? Object.fromEntries(
@@ -367,6 +377,11 @@ export async function portal(
           );
         if (Date.parse(input.start) <= Date.now())
           throw new HttpError(400, "Please choose a future appointment.");
+        if (
+          flow.service === "virtual" &&
+          easternDate(new Date(input.start)) < firstClass(env)
+        )
+          throw new HttpError(400, "Group classes begin October 13, 2026.");
         const [existing] = await db.query(
           "SELECT * FROM bookings WHERE flow_id=$1 AND user_id=$2",
           [flow.id, user.id],
@@ -840,4 +855,43 @@ export async function stripeWebhook(
     if (!(error instanceof HttpError)) throw error;
   }
   return json({ ok: true });
+}
+
+// Group times are public so visitors can see them before signing in.
+export async function publicGroupTimes(request, env, { db, cal }) {
+  if (request.method !== "GET") throw new HttpError(405, "Method not allowed.");
+  const ip = request.headers.get("cf-connecting-ip") || "local";
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(ip),
+  );
+  await limit(
+    db,
+    "public:" +
+      Array.from(new Uint8Array(digest), (b) =>
+        b.toString(16).padStart(2, "0"),
+      ).join(""),
+    30,
+  );
+  const start = new Date();
+  const end = new Date(start.getTime() + 60 * 86400000);
+  const data = groupDays(
+    await cal.slots(
+      eventId(env, "virtual", false),
+      start.toISOString(),
+      end.toISOString(),
+      "America/New_York",
+    ),
+    env,
+  );
+  return json({
+    classes: Object.values(data)
+      .flat()
+      .map((slot) => ({
+        start: new Date(
+          typeof slot === "string" ? slot : slot.start,
+        ).toISOString(),
+        full: typeof slot === "object" && slot.seatsRemaining === 0,
+      })),
+  });
 }

@@ -116,9 +116,10 @@ function wireToolbar() {
 }
 function signIn({ focusHeading = true } = {}) {
   render(
-    `<p class="eyebrow">Welcome</p><h2>A little space<br>for you.</h2><p>Sign in or create your account with an email code. No password to remember.</p><form id="sign-in-form"><div class="field"><label for="parent-name">Your name</label><input id="parent-name" name="name" autocomplete="name" maxlength="200" value="${escape(name)}" required></div><div class="field"><label for="parent-email">Email address</label><input id="parent-email" name="email" type="email" autocomplete="email" value="${escape(email)}" required></div><button class="btn btn-primary" type="submit">Send sign-in code</button></form><p class="muted" style="margin-top:24px">Your account lets you book for yourself or your children and keeps completed intake on file.</p>`,
+    `<p class="eyebrow">Welcome</p><h2>A little space<br>for you.</h2><p>Sign in or create your account with an email code. No password to remember.</p><form id="sign-in-form"><div class="field"><label for="parent-name">Your name</label><input id="parent-name" name="name" autocomplete="name" maxlength="200" value="${escape(name)}" required></div><div class="field"><label for="parent-email">Email address</label><input id="parent-email" name="email" type="email" autocomplete="email" value="${escape(email)}" required></div><button class="btn btn-primary" type="submit">Send sign-in code</button></form><p class="muted" style="margin-top:24px">Your account lets you book for yourself or your children and keeps completed intake on file.</p><section class="portal-group-times" aria-labelledby="group-times-heading"><h3 id="group-times-heading">Upcoming group classes</h3><p class="muted">Live online, 60 minutes. ${prices.group}; sign in to buy a package and reserve your place. Times shown in ${escape(timeZone.replaceAll("_", " "))}.</p><ul id="group-times"><li class="muted">Loading class times…</li></ul></section>`,
     { focusHeading },
   );
+  groupTimes();
   on(
     "#sign-in-form",
     async (e) => {
@@ -133,6 +134,30 @@ function signIn({ focusHeading = true } = {}) {
     },
     "submit",
   );
+}
+async function groupTimes() {
+  const list = screen.querySelector("#group-times");
+  let classes;
+  try {
+    const r = await fetch("/api/public/group-times");
+    if (!r.ok) throw new Error();
+    ({ classes } = await r.json());
+  } catch {
+    if (list?.isConnected)
+      list.innerHTML =
+        '<li class="muted">Class times could not be loaded. Tuesdays at 7pm and Wednesdays at noon Eastern.</li>';
+    return;
+  }
+  if (!list?.isConnected) return;
+  list.innerHTML = classes.length
+    ? classes
+        .slice(0, 8)
+        .map(
+          (c) =>
+            `<li>${escape(new Date(c.start).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}${c.full ? " · Full" : ""}</li>`,
+        )
+        .join("")
+    : '<li class="muted">No classes are scheduled right now.</li>';
 }
 function codeScreen() {
   render(

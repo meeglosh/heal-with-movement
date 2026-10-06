@@ -5,6 +5,7 @@ import {
   portal,
   calWebhook,
   stripeWebhook,
+  publicGroupTimes,
   limit,
 } from "../../server/portal.js";
 import { stripe } from "../../server/stripe.js";
@@ -26,6 +27,8 @@ export async function onRequest(context) {
       pay = stripe(env);
     if (path === "/api/cal/webhook")
       return await calWebhook(request, env, { db, cal, pay });
+    if (path === "/api/public/group-times")
+      return await publicGroupTimes(request, env, { db, cal });
     if (path === "/api/stripe/webhook")
       return await stripeWebhook(request, env, { db, cal, pay });
     const auth = createAuth(env, request);
