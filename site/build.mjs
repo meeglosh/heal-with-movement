@@ -596,7 +596,7 @@ const testimonials = page({
 const services = page({
   path: "/services.html",
   title: "Services & Pricing | Heal with Movement",
-  description: "In-person and virtual Anat Baniel Method NeuroMovement lessons with Heidi Rood. Montreal private lessons CAD $85, Vermont USD $80, virtual private CAD $40, and online group classes USD $90 for six credits.",
+  description: "In-person and virtual Anat Baniel Method NeuroMovement lessons with Heidi Rood. Montreal private lessons CAD $85, Vermont USD $80, virtual private CAD $40, and online group classes USD $20 drop-in or USD $90 for six credits.",
   active: "/services.html",
   body: `
 <section class="section">
@@ -638,9 +638,9 @@ const services = page({
       <div class="card settle">
         <h3>Virtual Group Class</h3>
         <p>Live online group session.</p>
-        <p class="stat">USD $90 / 6 credits</p>
+        <p class="stat">USD $20 drop-in · USD $90 / 6 credits</p>
         <p class="hint">Session length: 60 minutes</p>
-        <p class="hint">Credits do not expire; no drop-in. Prepaid by card.</p>
+        <p class="hint">Package credits do not expire. Prepaid by card.</p>
         <p class="hint">Tuesdays at 7pm and Wednesdays at noon Eastern · Ages 12+ · Up to 50 participants.</p>
         <p class="hint">Classes begin October 13, 2026.</p>
         <a class="btn btn-primary btn-small" href="/book.html?location=virtual">See class times &amp; register</a>

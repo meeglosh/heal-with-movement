@@ -117,6 +117,7 @@ before(async () => {
     "004_intake_reviews.sql",
     "005_virtual_private.sql",
     "006_payments.sql",
+    "007_group_drop_in.sql",
   ])
     await pg.exec(
       await readFile(new URL("../migrations/" + file, import.meta.url), "utf8"),
@@ -1136,6 +1137,7 @@ test("group times are public, start October 13, and mark full classes", async ()
     )
   ).json();
   assert.deepEqual(Object.keys(portalSlots.slots), ["2026-10-13", "2026-10-14"]);
+  env.GROUP_FIRST_CLASS = "2000-01-01";
 });
 
 
@@ -1162,3 +1164,35 @@ test("virtual sessions skip intake while in-person sessions still require it", a
     (e) => e.status === 409,
   );
 });
+
+test("a group drop-in is paid by card and books one class without credits", async () => {
+  const { who, flow } = await groupUser("drop-in-client");
+  const callsBefore = calls;
+  const { checkoutUrl } = await data(
+    `/flows/${flow.id}/book`,
+    { ...later(5), dropIn: true },
+    who,
+  );
+  assert.equal(calls, callsBefore);
+  const price = createdSessions.at(-1).body.line_items[0].price_data;
+  assert.equal(price.unit_amount, 2000);
+  assert.equal(price.currency, "usd");
+  const result = await data(
+    "/checkout/complete",
+    { sessionId: markPaid(checkoutUrl) },
+    who,
+  );
+  assert.equal(result.kind, "group_drop_in");
+  assert.equal(result.booking.service, "virtual");
+  assert.equal(result.credits, 0);
+  const [row] = await db.query("SELECT * FROM bookings WHERE id=$1", [result.booking.id]);
+  assert.equal(row.uses_credit, false);
+  assert.ok(row.payment_id);
+  // Drop-in is only offered for group classes.
+  const lesson = await data("/flows", { service: "virtual_private", childId: null }, who);
+  await assert.rejects(
+    request(`/flows/${lesson.id}/book`, { ...later(5), dropIn: true }, who),
+    (e) => e.status === 400,
+  );
+});
+

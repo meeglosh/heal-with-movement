@@ -71,6 +71,7 @@ export const bookingInput = z
       }, "Invalid time zone"),
     name: short,
     agreed: z.literal(true).optional(),
+    dropIn: z.literal(true).optional(),
   })
   .strict();
 

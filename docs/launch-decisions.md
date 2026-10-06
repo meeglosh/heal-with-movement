@@ -12,7 +12,10 @@ them. See [open implementation and follow-up items](#open-items) before launch.
 - Vermont private lesson: USD $80 per 60-minute session.
 - Virtual private lesson: CAD $40 per 60-minute session.
 - Virtual group package: USD $90 for six classes. The credits can be used at
-  any time, do not expire, and there is no drop-in option.
+  any time and do not expire.
+- Virtual group drop-in: USD $20 for a single class, paid by card at booking.
+  Heidi added this on October 6, 2026, replacing her earlier "no drop-in"
+  answer.
 - Adult and child private lessons use the same price.
 - Virtual private and virtual group bookings are paid by card online at
   booking. In-person sessions are invoiced after the visit.

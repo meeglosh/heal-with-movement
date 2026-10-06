@@ -20,6 +20,7 @@ let me,
 const prices = {
   virtual_private: "CAD $40",
   group: "USD $90 for 6 classes",
+  dropIn: "USD $20",
 };
 async function checkout(path, body) {
   const { checkoutUrl } = await api(path, body);
@@ -116,7 +117,7 @@ function wireToolbar() {
 }
 function signIn({ focusHeading = true } = {}) {
   render(
-    `<p class="eyebrow">Welcome</p><h2>A little space<br>for you.</h2><p>Sign in or create your account with an email code. No password to remember.</p><form id="sign-in-form"><div class="field"><label for="parent-name">Your name</label><input id="parent-name" name="name" autocomplete="name" maxlength="200" value="${escape(name)}" required></div><div class="field"><label for="parent-email">Email address</label><input id="parent-email" name="email" type="email" autocomplete="email" value="${escape(email)}" required></div><button class="btn btn-primary" type="submit">Send sign-in code</button></form><p class="muted" style="margin-top:24px">Your account lets you book for yourself or your children and keeps completed intake on file.</p><section class="portal-group-times" aria-labelledby="group-times-heading"><h3 id="group-times-heading">Upcoming group classes</h3><p class="muted">Live online, 60 minutes. ${prices.group}; sign in to buy a package and reserve your place. Times shown in ${escape(timeZone.replaceAll("_", " "))}.</p><ul id="group-times"><li class="muted">Loading class times…</li></ul></section>`,
+    `<p class="eyebrow">Welcome</p><h2>A little space<br>for you.</h2><p>Sign in or create your account with an email code. No password to remember.</p><form id="sign-in-form"><div class="field"><label for="parent-name">Your name</label><input id="parent-name" name="name" autocomplete="name" maxlength="200" value="${escape(name)}" required></div><div class="field"><label for="parent-email">Email address</label><input id="parent-email" name="email" type="email" autocomplete="email" value="${escape(email)}" required></div><button class="btn btn-primary" type="submit">Send sign-in code</button></form><p class="muted" style="margin-top:24px">Your account lets you book for yourself or your children and keeps completed intake on file.</p><section class="portal-group-times" aria-labelledby="group-times-heading"><h3 id="group-times-heading">Upcoming group classes</h3><p class="muted">Live online, 60 minutes. ${prices.dropIn} drop-in or ${prices.group}; sign in to reserve your place. Times shown in ${escape(timeZone.replaceAll("_", " "))}.</p><ul id="group-times"><li class="muted">Loading class times…</li></ul></section>`,
     { focusHeading },
   );
   groupTimes();
@@ -501,6 +502,7 @@ function confirm(start) {
       timeZone,
       name: me.user.name,
       ...(agree ? { agreed: true } : {}),
+      ...(flow.service === "virtual" && !me.credits ? { dropIn: true } : {}),
     });
     if (result.checkoutUrl) return location.assign(result.checkoutUrl);
     await booked(result.booking);
@@ -517,7 +519,7 @@ function paymentNote() {
     return '<p class="muted">You’ll be invoiced after your visit.</p><button class="btn btn-primary" id="confirm-booking">Confirm booking</button>';
   if (me.credits > 0)
     return `<p>Uses 1 of your ${me.credits} class credit${me.credits === 1 ? "" : "s"}.</p><button class="btn btn-primary" id="confirm-booking">Confirm booking</button>`;
-  return `<p>You need a class credit to book. Classes are sold in packages of 6 (${prices.group}); credits never expire.</p><button class="btn btn-primary" id="buy-credits">Buy 6 classes</button>`;
+  return `<p>Pay for this class on its own (${prices.dropIn}), or buy a package of 6 classes (${prices.group}) to use now and later; package credits never expire.</p><button class="btn btn-primary" id="confirm-booking">Pay ${prices.dropIn} for this class</button> <button class="btn btn-ghost" id="buy-credits">Buy 6 classes</button>`;
 }
 async function booked(booking) {
   history.replaceState(null, "", "/account.html");

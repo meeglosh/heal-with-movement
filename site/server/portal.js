@@ -413,12 +413,16 @@ export async function portal(
               flow.child_id ? null : user.id,
             ],
           );
-        if (flow.service === "virtual_private")
+        if (input.dropIn && flow.service !== "virtual")
+          throw new HttpError(400, "Drop-in is only for group classes.");
+        // Private lessons and group drop-ins are paid by card before booking.
+        if (flow.service === "virtual_private" || input.dropIn)
           return json({
             checkoutUrl: await startLessonCheckout(db, pay, env, {
               flow,
               user,
               input,
+              kind: input.dropIn ? "group_drop_in" : "private_lesson",
             }),
           });
         const usesCredit = flow.service === "virtual";
@@ -740,14 +744,16 @@ async function openCheckout(db, pay, env, { paymentId, user, price, back }) {
   return session.url;
 }
 
-async function startLessonCheckout(db, pay, env, { flow, user, input }) {
-  const price = PRICES.virtual_private;
+async function startLessonCheckout(db, pay, env, { flow, user, input, kind }) {
+  const price =
+    kind === "group_drop_in" ? PRICES.group_drop_in : PRICES.virtual_private;
   const paymentId = crypto.randomUUID();
   await db.query(
-    "INSERT INTO payments(id,user_id,kind,flow_id,start_at,time_zone,attendee_name,amount,currency) VALUES($1,$2,'private_lesson',$3,$4,$5,$6,$7,$8)",
+    "INSERT INTO payments(id,user_id,kind,flow_id,start_at,time_zone,attendee_name,amount,currency) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
     [
       paymentId,
       user.id,
+      kind,
       flow.id,
       input.start,
       input.timeZone,

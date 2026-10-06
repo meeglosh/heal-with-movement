@@ -9,6 +9,11 @@ export const PRICES = {
     currency: "cad",
     name: "Virtual private lesson (60 minutes)",
   },
+  group_drop_in: {
+    amount: 2000,
+    currency: "usd",
+    name: "Virtual group class — single drop-in",
+  },
   group_credits: {
     amount: 9000,
     currency: "usd",
