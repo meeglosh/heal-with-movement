@@ -79,7 +79,5 @@ with Movement launch".
 5. **Legal pages.** These still need an insurance answer, the governing-law
    jurisdiction, a "Last updated" date and removal of the draft banner. The
    disclaimer's "consent to treatment" wording is in question.
-6. **Child approvals.** Cal.com requires approval for every child private
-   booking; Heidi wants approval for the first booking only.
-7. **Credit waivers.** There is no staff tool to return a forfeited credit.
+6. **Credit waivers.** There is no staff tool to return a forfeited credit.
    Late cancellations by Heidi must be refunded manually in Stripe.

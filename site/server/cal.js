@@ -1,5 +1,11 @@
 import { HttpError } from "./http.js";
-export function eventId(env, service, isChild) {
+// A child Heidi has already approved books a "returning" event type without
+// confirmation; when none is configured, the approval event is used instead.
+export function eventId(env, service, isChild, returning = false) {
+  const prefix = `CAL_${service.toUpperCase()}`;
+  const repeat = Number(env[`${prefix}_CHILD_RETURNING_EVENT_ID`]);
+  if (isChild && returning && Number.isSafeInteger(repeat) && repeat > 0)
+    return repeat;
   const id = Number(
     env[`CAL_${service.toUpperCase()}${isChild ? "_CHILD" : ""}_EVENT_ID`],
   );
@@ -10,7 +16,7 @@ export function eventId(env, service, isChild) {
     );
   return id;
 }
-export function validateEvent(event, isChild) {
+export function validateEvent(event, isChild, returning = false) {
   const seated =
     !event.seats?.disabled &&
     Number(event.seats?.seatsPerTimeSlot || event.seatsPerTimeSlot) > 0;
@@ -22,6 +28,7 @@ export function validateEvent(event, isChild) {
   if (
     isChild &&
     !seated &&
+    !returning &&
     (!event.confirmationPolicy ||
       event.confirmationPolicy.disabled ||
       event.confirmationPolicy.type !== "always")

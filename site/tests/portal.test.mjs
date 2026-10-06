@@ -118,6 +118,7 @@ before(async () => {
     "005_virtual_private.sql",
     "006_payments.sql",
     "007_group_drop_in.sql",
+    "008_child_approval.sql",
   ])
     await pg.exec(
       await readFile(new URL("../migrations/" + file, import.meta.url), "utf8"),
@@ -1196,3 +1197,81 @@ test("a group drop-in is paid by card and books one class without credits", asyn
   );
 });
 
+
+test("only a child's first private booking needs Heidi's approval", async () => {
+  const parent = {
+    id: "approval-parent",
+    email: "approval-parent@example.invalid",
+    name: "Approval Parent",
+    emailVerified: true,
+  };
+  const { child } = await data(
+    "/children",
+    { name: "Approval Child", birthDate: "2018-05-05" },
+    parent,
+  );
+  const flow = await data("/flows", { service: "vermont", childId: child.id }, parent);
+  await data(
+    `/flows/${flow.id}/intake`,
+    {
+      clientName: "Approval Child",
+      birthDate: "2018-05-05",
+      guardianName: parent.name,
+      address: "1 Main",
+      city: "City",
+      province: "VT",
+      postalCode: "05401",
+      email: parent.email,
+      preferredPhone: "cell",
+      reason: "First lesson",
+      hasTubes: "no",
+      consent: "on",
+      signature: parent.name,
+      signDate: new Date().toISOString().slice(0, 10),
+    },
+    parent,
+  );
+  const input = { ...later(4), name: parent.name };
+  delete input.agreed;
+  const first = await data(`/flows/${flow.id}/book`, input, parent);
+  assert.equal(observedBookingEventId, 2);
+  assert.equal(first.booking.status, "pending");
+  const [row] = await db.query("SELECT * FROM bookings WHERE id=$1", [first.booking.id]);
+  const decided = (status) => ({
+    ...cal,
+    get: async () => ({
+      uid: row.cal_uid,
+      eventTypeId: row.event_type_id,
+      status,
+      start: new Date(row.start_at).toISOString(),
+      attendees: [{ email: parent.email }],
+    }),
+  });
+  env.CAL_VERMONT_CHILD_RETURNING_EVENT_ID = "3";
+  // A rejection is not an approval.
+  await request("/me", undefined, parent, { cal: decided("rejected") });
+  const notYet = await data("/flows", { service: "vermont", childId: child.id }, parent);
+  await data(`/flows/${notYet.id}/book`, input, parent);
+  assert.equal(observedBookingEventId, 2);
+  // Once Heidi accepts a booking, later bookings skip approval.
+  await db.query("UPDATE bookings SET status='pending' WHERE id=$1", [row.id]);
+  await request("/me", undefined, parent, { cal: decided("accepted") });
+  const returning = await data("/flows", { service: "vermont", childId: child.id }, parent);
+  const noApproval = {
+    ...cal,
+    event: async (id) => {
+      observedEventId = id;
+      return { confirmationPolicy: { disabled: true } };
+    },
+  };
+  await request(`/flows/${returning.id}/book`, input, parent, { cal: noApproval });
+  assert.equal(observedEventId, 3);
+  assert.equal(observedBookingEventId, 3);
+  // Without a returning event configured, the approval event is still used.
+  delete env.CAL_VERMONT_CHILD_RETURNING_EVENT_ID;
+  const fallback = await data("/flows", { service: "vermont", childId: child.id }, parent);
+  await data(`/flows/${fallback.id}/book`, input, parent);
+  assert.equal(observedBookingEventId, 2);
+  // An approval event must still require confirmation.
+  assert.throws(() => validateEvent({ confirmationPolicy: { disabled: true } }, true));
+});

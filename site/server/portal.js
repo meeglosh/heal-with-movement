@@ -29,6 +29,21 @@ function groupDays(slots, env) {
 const needsIntake = (f) =>
   ["montreal", "vermont"].includes(f.service) &&
   (!f.completed_at || !!f.review_due);
+// Heidi approves a child's first private booking; once she has accepted one,
+// later private bookings for that child use the event without confirmation.
+const isReturningChild = (f) =>
+  !!f.child_id && f.service !== "virtual" && !!f.approved_at;
+async function markApproved(db, booking, status) {
+  if (
+    status === "accepted" &&
+    booking.child_id &&
+    booking.service !== "virtual"
+  )
+    await db.query(
+      "UPDATE children SET approved_at=now() WHERE id=$1 AND approved_at IS NULL",
+      [booking.child_id],
+    );
+}
 function parse(schema, value) {
   const result = schema.safeParse(value);
   if (!result.success)
@@ -56,7 +71,7 @@ export async function limit(db, key, max = 60) {
 export async function ownedFlow(db, userId, flowId) {
   parse(id, flowId);
   const [flow] = await db.query(
-    `SELECT f.*,c.name AS child_name,c.birth_date::text AS birth_date,CASE WHEN f.child_id IS NULL THEN a.completed_at ELSE i.completed_at END AS completed_at,CASE WHEN f.child_id IS NULL THEN a.reviewed_at ELSE i.reviewed_at END AS reviewed_at,CASE WHEN f.child_id IS NULL THEN a.version ELSE i.version END AS intake_version,CASE WHEN f.child_id IS NULL THEN a.reviewed_at ELSE i.reviewed_at END + interval '6 months' <= now() AS review_due FROM booking_flows f LEFT JOIN children c ON c.id=f.child_id LEFT JOIN intakes i ON i.child_id=f.child_id LEFT JOIN adult_intakes a ON a.user_id=f.user_id WHERE f.id=$1 AND f.user_id=$2 AND f.expires_at>now() AND (f.child_id IS NULL OR c.guardian_id=$2)`,
+    `SELECT f.*,c.name AS child_name,c.birth_date::text AS birth_date,c.approved_at,CASE WHEN f.child_id IS NULL THEN a.completed_at ELSE i.completed_at END AS completed_at,CASE WHEN f.child_id IS NULL THEN a.reviewed_at ELSE i.reviewed_at END AS reviewed_at,CASE WHEN f.child_id IS NULL THEN a.version ELSE i.version END AS intake_version,CASE WHEN f.child_id IS NULL THEN a.reviewed_at ELSE i.reviewed_at END + interval '6 months' <= now() AS review_due FROM booking_flows f LEFT JOIN children c ON c.id=f.child_id LEFT JOIN intakes i ON i.child_id=f.child_id LEFT JOIN adult_intakes a ON a.user_id=f.user_id WHERE f.id=$1 AND f.user_id=$2 AND f.expires_at>now() AND (f.child_id IS NULL OR c.guardian_id=$2)`,
     [flowId, userId],
   );
   if (!flow)
@@ -332,9 +347,14 @@ export async function portal(
           409,
           "Please complete or review intake before choosing a time.",
         );
-      const eid = eventId(env, flow.service, !!flow.child_id);
+      const returning = isReturningChild(flow);
+      const eid = eventId(env, flow.service, !!flow.child_id, returning);
       const event = await cal.event(eid);
-      validateEvent(event, !!flow.child_id);
+      validateEvent(
+        event,
+        !!flow.child_id,
+        eid !== eventId(env, flow.service, !!flow.child_id),
+      );
       if (action === "slots" && request.method === "GET") {
         const start = url.searchParams.get("start"),
           end = url.searchParams.get("end"),
@@ -619,6 +639,7 @@ async function refreshBooking(db, cal, booking, remote, target, pay) {
     "UPDATE bookings SET cal_uid=$2,status=$3,start_at=$4,updated_at=now() WHERE id=$1",
     [booking.id, current.uid, status, current.start],
   );
+  await markApproved(db, booking, status);
   // Cancellations with 24 hours' notice, and Heidi's rejections, return the
   // payment or class credit. Later cancellations forfeit it unless Heidi waives.
   const ended = ["cancelled", "rejected"];
@@ -802,7 +823,7 @@ async function settle({ db, cal, pay, env }, payment, session) {
     [payment.id, intent, session.id],
   );
   const [flow] = await db.query(
-    "SELECT f.*,u.email FROM booking_flows f JOIN portal_users u ON u.id=f.user_id WHERE f.id=$1 AND f.user_id=$2",
+    "SELECT f.*,u.email,c.approved_at FROM booking_flows f JOIN portal_users u ON u.id=f.user_id LEFT JOIN children c ON c.id=f.child_id WHERE f.id=$1 AND f.user_id=$2",
     [payment.flow_id, payment.user_id],
   );
   const [claimed] = await db.query(
@@ -813,7 +834,7 @@ async function settle({ db, cal, pay, env }, payment, session) {
       flow.user_id,
       flow.child_id,
       flow.service,
-      eventId(env, flow.service, !!flow.child_id),
+      eventId(env, flow.service, !!flow.child_id, isReturningChild(flow)),
       payment.start_at,
       payment.time_zone,
       payment.id,
