@@ -6,6 +6,8 @@ deployment and configuration details live in [site/DEPLOY.md](site/DEPLOY.md).
 
 ## Live now (healwithmovement.com)
 
+A real payment, cancellation and refund were tested end to end on October 6, 2026.
+
 - **Payments (Stripe, live mode).** Virtual private lessons cost CAD $40,
   group drop-ins USD $20, and six-class group packages USD $90; all are paid by
   card. Prices are in `site/server/stripe.js`, not in Stripe Products. A private
@@ -66,18 +68,14 @@ Cloudflare secrets take effect at the next deploy.
 Questions for Heidi are in a separate shared doc, "Questions for Heidi — Heal
 with Movement launch".
 
-1. **Real-payment test.** Book a $40 lesson and a $20 drop-in, then cancel
-   more than 24 hours ahead and confirm the refunds in Stripe. Also confirm
-   the account page updates on its own, which shows the Cal webhook secret
-   works.
-2. **Child group classes.** Is 12+ final, and must a parent take part? The site
+1. **Child group classes.** Is 12+ final, and must a parent take part? The site
    does not check age for group classes yet.
-3. **Recording consent.** Nothing has been built yet.
-4. **In-person hours and addresses.** Montreal and Vermont still use the
+2. **Recording consent.** Nothing has been built yet.
+3. **In-person hours and addresses.** Montreal and Vermont still use the
    placeholder weekday 10 a.m.–5 p.m. schedule (`2416901`), and Vermont is not
    hidden from booking.
-5. **Legal pages.** These still need an insurance answer, the governing-law
+4. **Legal pages.** These still need an insurance answer, the governing-law
    jurisdiction, a "Last updated" date and removal of the draft banner. The
    disclaimer's "consent to treatment" wording is in question.
-6. **Credit waivers.** There is no staff tool to return a forfeited credit.
+5. **Credit waivers.** There is no staff tool to return a forfeited credit.
    Late cancellations by Heidi must be refunded manually in Stripe.
