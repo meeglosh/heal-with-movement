@@ -515,7 +515,8 @@ test("virtual private adult and child events share the correct IDs and intake ga
     childId: child.id,
   }, virtualUser);
   assert.equal(flow.service, "virtual_private");
-  assert.equal(flow.needsIntake, true);
+  // Virtual sessions need the disclaimer, not intake.
+  assert.equal(flow.needsIntake, false);
   const values = {
     clientName: "Forged",
     birthDate: "2019-01-01",
@@ -553,11 +554,25 @@ test("virtual private adult and child events share the correct IDs and intake ga
   assert.equal(observedEventId, 102);
   assert.equal(observedSlotEventId, 102);
   const callsBeforeCheckout = calls;
+  await assert.rejects(
+    request(`/flows/${flow.id}/book`, {
+      start,
+      timeZone: "America/New_York",
+      name: virtualUser.name,
+    }, virtualUser),
+    (e) => e.status === 400 && /Disclaimer/.test(e.message),
+  );
   const pending = await data(`/flows/${flow.id}/book`, {
     start,
     timeZone: "America/New_York",
     name: virtualUser.name,
+    agreed: true,
   }, virtualUser);
+  const [accepted] = await db.query(
+    "SELECT * FROM audit_events WHERE action='disclaimer.accepted' AND child_id=$1",
+    [child.id],
+  );
+  assert.equal(accepted.actor_id, virtualUser.id);
   // Payment comes first: nothing is booked until Stripe reports it paid.
   assert.match(pending.checkoutUrl, /^https:\/\/checkout\.stripe\.test\//);
   assert.equal(calls, callsBeforeCheckout);
@@ -630,6 +645,7 @@ test("virtual private adult and child events share the correct IDs and intake ga
     start,
     timeZone: "America/New_York",
     name: virtualUser.name,
+    agreed: true,
   }, virtualUser);
   const adultBooking = await data(
     "/checkout/complete",
@@ -956,6 +972,7 @@ const later = (days) => ({
   start: new Date(Date.now() + days * 86400000).toISOString(),
   timeZone: "UTC",
   name: "Group Client",
+  agreed: true,
 });
 
 test("group classes need a credit, and a paid package adds six credits exactly once", async () => {
@@ -1121,3 +1138,27 @@ test("group times are public, start October 13, and mark full classes", async ()
   assert.deepEqual(Object.keys(portalSlots.slots), ["2026-10-13", "2026-10-14"]);
 });
 
+
+test("virtual sessions skip intake while in-person sessions still require it", async () => {
+  const who = {
+    id: "no-intake-client",
+    email: "no-intake@example.invalid",
+    name: "No Intake",
+    emailVerified: true,
+  };
+  const range = new URLSearchParams({
+    start: new Date().toISOString(),
+    end: new Date(Date.now() + 7 * 86400000).toISOString(),
+  });
+  for (const service of ["virtual", "virtual_private"]) {
+    const flow = await data("/flows", { service, childId: null }, who);
+    assert.equal(flow.needsIntake, false);
+    assert.equal((await request(`/flows/${flow.id}/slots?${range}`, undefined, who)).status, 200);
+  }
+  const inPerson = await data("/flows", { service: "montreal", childId: null }, who);
+  assert.equal(inPerson.needsIntake, true);
+  await assert.rejects(
+    request(`/flows/${inPerson.id}/slots?${range}`, undefined, who),
+    (e) => e.status === 409,
+  );
+});

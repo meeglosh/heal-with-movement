@@ -25,6 +25,10 @@ function groupDays(slots, env) {
     Object.entries(slots).filter(([day]) => day >= firstClass(env)),
   );
 }
+// Heidi needs intake before in-person sessions only; virtual sessions skip it.
+const needsIntake = (f) =>
+  ["montreal", "vermont"].includes(f.service) &&
+  (!f.completed_at || !!f.review_due);
 function parse(schema, value) {
   const result = schema.safeParse(value);
   if (!result.success)
@@ -74,7 +78,7 @@ function publicFlow(f) {
     childId: f.child_id,
     childName: f.child_name,
     birthDate: f.birth_date ? String(f.birth_date).slice(0, 10) : null,
-    needsIntake: !f.completed_at || !!f.review_due,
+    needsIntake: needsIntake(f),
     reviewDue: !!f.review_due,
   };
 }
@@ -323,7 +327,7 @@ export async function portal(
       }
     }
     if (["slots", "book"].includes(action)) {
-      if (!flow.completed_at || flow.review_due)
+      if (needsIntake(flow))
         throw new HttpError(
           409,
           "Please complete or review intake before choosing a time.",
@@ -377,6 +381,13 @@ export async function portal(
           );
         if (Date.parse(input.start) <= Date.now())
           throw new HttpError(400, "Please choose a future appointment.");
+        const virtual = ["virtual", "virtual_private"].includes(flow.service);
+        // Virtual sessions skip intake, so the client agrees to the disclaimer instead.
+        if (virtual && input.agreed !== true)
+          throw new HttpError(
+            400,
+            "Please agree to the Medical Disclaimer and Cancellation Policy to continue.",
+          );
         if (
           flow.service === "virtual" &&
           easternDate(new Date(input.start)) < firstClass(env)
@@ -390,6 +401,17 @@ export async function portal(
           return json(
             { booking: publicBooking(existing) },
             existing.status === "creating" ? 202 : 200,
+          );
+        if (virtual)
+          await db.query(
+            "INSERT INTO audit_events(id,actor_id,action,child_id,subject_user_id) VALUES($1,$2,$3,$4,$5)",
+            [
+              crypto.randomUUID(),
+              user.id,
+              "disclaimer.accepted",
+              flow.child_id,
+              flow.child_id ? null : user.id,
+            ],
           );
         if (flow.service === "virtual_private")
           return json({

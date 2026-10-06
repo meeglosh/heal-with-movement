@@ -438,7 +438,7 @@ ${testimonialSequence()}
 <section class="section">
   <div class="wrap" style="text-align:center;">
     <h2>Ready to move differently?</h2>
-    <p style="max-width:50ch; margin:0 auto 1.6em;">Choose a location and find a time that works. If you’re booking for your child, their first-session intake is part of the booking process.</p>
+    <p style="max-width:50ch; margin:0 auto 1.6em;">Choose a location and find a time that works. For in-person sessions, the intake form is part of the booking process.</p>
     <div class="hero-cta" style="justify-content:center;">
       <a class="btn btn-primary" href="/book.html">Book a Session</a>
     </div>
@@ -653,7 +653,7 @@ const services = page({
   <div class="wrap grid grid-2">
     <div class="settle">
       <h2>Sessions for children</h2>
-      <p>For a child's first session, please complete the intake form in advance so Heidi can prepare for your visit.</p>
+      <p>Before a first in-person session, please complete the intake form so Heidi can prepare for your visit. Virtual sessions do not need an intake form.</p>
       <a class="btn btn-ghost" href="/book.html?for=child">Book for your child</a>
     </div>
     <div class="settle">
@@ -688,7 +688,7 @@ const faqItems = [
   ["Do I need any experience or equipment?", "No experience is necessary. Wear comfortable clothing you can move in. In-person sessions typically take place on a low table; virtual sessions can be done seated, lying down, or standing, depending on the class."],
   ["Is this covered by insurance?", "{{INSURANCE_INFO}}, please confirm coverage with your provider; Heal with Movement can provide a receipt for services upon request."],
   ["What ages and conditions do you work with?", "Heidi works with children with developmental disabilities and special needs, adults recovering from injury or stroke, people with chronic conditions such as Parkinson's and multiple sclerosis, high performers, and anyone seeking greater ease of movement."],
-  ["How do I book for my child?", "Please complete the child intake form before your first session. Heidi reviews every intake ahead of a first lesson with a new child client."],
+  ["How do I book for my child?", "Sign in and add your child to your account. For in-person sessions, you’ll complete the child intake form as part of booking, and Heidi reviews every intake ahead of a first lesson with a new child client. Virtual sessions do not need an intake form."],
   ["What is the cancellation policy?", "Heal with Movement reserves the right to charge the full session fee for cancellations made with less than {{CANCELLATION_HOURS}} hours' notice. See the full Cancellation Policy page for details."],
   ["Do you offer virtual sessions?", "Yes. You can book a one-on-one private lesson by video from anywhere in the world, or join a live online group class."],
   ["Where are in-person sessions held?", "In-person private lessons are offered in Montreal, Quebec and Chittenden County, Vermont. {{STUDIO_ADDRESS}}"],

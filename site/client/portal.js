@@ -217,7 +217,7 @@ function choosePerson() {
       .filter((c) => !c.adultAccountRequired)
       .map(
         (c) =>
-          `<button class="portal-choice" data-person="${escape(c.id)}"><strong>${escape(c.name)}</strong><small>${c.intakeComplete ? "Intake on file" : "First booking — intake needed"}</small></button>`,
+          `<button class="portal-choice" data-person="${escape(c.id)}"><strong>${escape(c.name)}</strong><small>${c.intakeComplete ? "Intake on file" : "Intake needed for in-person sessions"}</small></button>`,
       )
       .join("")}${me.children
       .filter((c) => c.adultAccountRequired)
@@ -481,7 +481,7 @@ async function slots() {
 }
 function confirm(start) {
   render(
-    `${toolbar()}<p class="eyebrow">One last step</p><h2>Your next session.</h2><p><strong>${escape(labels[flow.service])}</strong></p><p>${escape(flow.childName || me.user.name)}</p><p>${escape(new Date(start).toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" }))}</p><p class="muted">Confirmation will be sent to ${escape(me.user.email)}.</p>${paymentNote()}<button class="portal-link" id="back" style="margin-left:20px">Choose another time</button>`,
+    `${toolbar()}<p class="eyebrow">One last step</p><h2>Your next session.</h2><p><strong>${escape(labels[flow.service])}</strong></p><p>${escape(flow.childName || me.user.name)}</p><p>${escape(new Date(start).toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" }))}</p><p class="muted">Confirmation will be sent to ${escape(me.user.email)}.</p>${disclaimer()}${paymentNote()}<button class="portal-link" id="back" style="margin-left:20px">Choose another time</button>`,
   );
   wireToolbar();
   on("#back", slots);
@@ -489,14 +489,26 @@ function confirm(start) {
     checkout("/api/portal/credits/checkout", { flowId: flow.id }),
   );
   on("#confirm-booking", async () => {
+    const agree = screen.querySelector("#agree");
+    if (agree && !agree.checked) {
+      agree.focus();
+      throw new Error(
+        "Please agree to the Medical Disclaimer and Cancellation Policy to continue.",
+      );
+    }
     const result = await api(`/api/portal/flows/${flow.id}/book`, {
       start,
       timeZone,
       name: me.user.name,
+      ...(agree ? { agreed: true } : {}),
     });
     if (result.checkoutUrl) return location.assign(result.checkoutUrl);
     await booked(result.booking);
   });
+}
+function disclaimer() {
+  if (!["virtual", "virtual_private"].includes(flow.service)) return "";
+  return `<div class="field check-row"><label for="agree"><input type="checkbox" id="agree" required> <span>I have read and agree to the <a href="/disclaimer.html" target="_blank" rel="noopener">Medical Disclaimer</a> and <a href="/cancellation.html" target="_blank" rel="noopener">Cancellation Policy</a>${flow.childName ? ` on behalf of ${escape(flow.childName)}` : ""}.</span></label></div>`;
 }
 function paymentNote() {
   if (flow.service === "virtual_private")
