@@ -65,11 +65,14 @@ them. See [open implementation and follow-up items](#open-items) before launch.
 
 ## Open items
 
-- Heidi does not yet have a Stripe account. She must create or connect a
-  merchant account before the virtual private and group card-payment flow can
-  go live. The current booking flow does not collect online payment.
-- Implement the late-cancellation/no-show forfeiture rule, emergency waiver,
-  and staff choice to restore a future credit or issue a full refund. Align
+- Stripe checkout is built and uses a test-mode key: virtual private lessons
+  are paid at booking, and group classes use six-class credit packages. Before
+  launch it needs migration `006_payments.sql` in production, a Stripe webhook
+  endpoint, and a live-mode key.
+- Cancellations at least 24 hours ahead and Heidi's rejections now refund
+  the lesson or return the credit automatically; later ones forfeit. Still
+  missing: a staff tool to waive a forfeit by restoring a credit (refunds can
+  be issued in the Stripe Dashboard). Align
   intake wording with this decision and test both virtual credits and paid
   private bookings. The current booking system has no credit or refund tools.
 - The earlier monthly location split is only a preference, not active

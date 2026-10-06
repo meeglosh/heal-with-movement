@@ -1,7 +1,13 @@
 import { createAuth } from "../../server/auth.js";
 import { database } from "../../server/db.js";
 import { calendar } from "../../server/cal.js";
-import { portal, calWebhook, limit } from "../../server/portal.js";
+import {
+  portal,
+  calWebhook,
+  stripeWebhook,
+  limit,
+} from "../../server/portal.js";
+import { stripe } from "../../server/stripe.js";
 import { HttpError, json, checkOrigin, readJSON } from "../../server/http.js";
 export async function onRequest(context) {
   const { request, env } = context;
@@ -16,9 +22,12 @@ export async function onRequest(context) {
         503,
       );
     const db = database(env),
-      cal = calendar(env);
+      cal = calendar(env),
+      pay = stripe(env);
     if (path === "/api/cal/webhook")
-      return await calWebhook(request, env, { db, cal });
+      return await calWebhook(request, env, { db, cal, pay });
+    if (path === "/api/stripe/webhook")
+      return await stripeWebhook(request, env, { db, cal, pay });
     const auth = createAuth(env, request);
     if (path.startsWith("/api/auth/")) {
       checkOrigin(request, env.APP_ORIGIN);
@@ -51,7 +60,7 @@ export async function onRequest(context) {
       return secure;
     }
     if (path.startsWith("/api/portal/"))
-      return auth.finish(await portal(request, env, { db, auth, cal }));
+      return auth.finish(await portal(request, env, { db, auth, cal, pay }));
     throw new HttpError(404, "Not found.");
   } catch (error) {
     if (error instanceof HttpError)

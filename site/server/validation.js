@@ -49,6 +49,10 @@ export const intakeInput = z
     signDate: z.iso.date(),
   })
   .strict();
+export const creditCheckoutInput = z.object({ flowId: id.nullable() }).strict();
+export const checkoutCompleteInput = z
+  .object({ sessionId: z.string().regex(/^cs_[A-Za-z0-9_]{1,250}$/) })
+  .strict();
 export const bookingInput = z
   .object({
     start: z.iso

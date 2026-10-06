@@ -17,6 +17,14 @@ let me,
   selectedService =
     new URLSearchParams(location.search).get("location") || "vermont",
   week = 0;
+const prices = {
+  virtual_private: "CAD $40",
+  group: "USD $90 for 6 classes",
+};
+async function checkout(path, body) {
+  const { checkoutUrl } = await api(path, body);
+  location.assign(checkoutUrl);
+}
 const timeZone =
   Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
 const escape = (value) =>
@@ -155,9 +163,12 @@ async function dashboard() {
       )
       .join(
         "",
-      )}${me.reviews?.length ? `<p class="portal-review-notice">Intake review due for ${me.reviews.map((r) => escape(r.kind === "adult" ? "you" : r.name)).join(", ")}. Please review your saved answers.</p><div class="portal-options">${me.reviews.map((r, i) => `<button class="portal-choice" data-review="${i}">Review ${r.kind === "adult" ? "your intake" : escape(r.name) + "’s intake"}</button>`).join("")}</div>` : ""}<button class="btn btn-primary" id="new-booking">Book a Session</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review intake</button>' : ""}`,
+      )}${me.reviews?.length ? `<p class="portal-review-notice">Intake review due for ${me.reviews.map((r) => escape(r.kind === "adult" ? "you" : r.name)).join(", ")}. Please review your saved answers.</p><div class="portal-options">${me.reviews.map((r, i) => `<button class="portal-choice" data-review="${i}">Review ${r.kind === "adult" ? "your intake" : escape(r.name) + "’s intake"}</button>`).join("")}</div>` : ""}<p>Group class credits: <strong>${me.credits}</strong></p><button class="btn btn-primary" id="new-booking">Book a Session</button><button class="portal-link" id="buy-credits" style="margin-left:20px">Buy 6 group classes (${prices.group})</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", unavailable: "That time was taken — any payment or class credit has been returned", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review intake</button>' : ""}`,
   );
   wireToolbar();
+  on("#buy-credits", () =>
+    checkout("/api/portal/credits/checkout", { flowId: null }),
+  );
   on("#new-booking", () => {
     history.replaceState(null, "", "/book.html");
     choosePerson();
@@ -445,24 +456,43 @@ async function slots() {
 }
 function confirm(start) {
   render(
-    `${toolbar()}<p class="eyebrow">One last step</p><h2>Your next session.</h2><p><strong>${escape(labels[flow.service])}</strong></p><p>${escape(flow.childName || me.user.name)}</p><p>${escape(new Date(start).toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" }))}</p><p class="muted">Confirmation will be sent to ${escape(me.user.email)}.</p><button class="btn btn-primary" id="confirm-booking">Confirm booking</button><button class="portal-link" id="back" style="margin-left:20px">Choose another time</button>`,
+    `${toolbar()}<p class="eyebrow">One last step</p><h2>Your next session.</h2><p><strong>${escape(labels[flow.service])}</strong></p><p>${escape(flow.childName || me.user.name)}</p><p>${escape(new Date(start).toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" }))}</p><p class="muted">Confirmation will be sent to ${escape(me.user.email)}.</p>${paymentNote()}<button class="portal-link" id="back" style="margin-left:20px">Choose another time</button>`,
   );
   wireToolbar();
   on("#back", slots);
+  on("#buy-credits", () =>
+    checkout("/api/portal/credits/checkout", { flowId: flow.id }),
+  );
   on("#confirm-booking", async () => {
     const result = await api(`/api/portal/flows/${flow.id}/book`, {
       start,
       timeZone,
       name: me.user.name,
     });
-    history.replaceState(null, "", "/account.html");
-    await dashboard();
-    message(
-      result.booking.status === "accepted"
+    if (result.checkoutUrl) return location.assign(result.checkoutUrl);
+    await booked(result.booking);
+  });
+}
+function paymentNote() {
+  if (flow.service === "virtual_private")
+    return `<p>${prices.virtual_private}, paid by card. You’ll be taken to a secure Stripe page to pay, then returned here.</p><button class="btn btn-primary" id="confirm-booking">Continue to payment</button>`;
+  if (flow.service !== "virtual")
+    return '<p class="muted">You’ll be invoiced after your visit.</p><button class="btn btn-primary" id="confirm-booking">Confirm booking</button>';
+  if (me.credits > 0)
+    return `<p>Uses 1 of your ${me.credits} class credit${me.credits === 1 ? "" : "s"}.</p><button class="btn btn-primary" id="confirm-booking">Confirm booking</button>`;
+  return `<p>You need a class credit to book. Classes are sold in packages of 6 (${prices.group}); credits never expire.</p><button class="btn btn-primary" id="buy-credits">Buy 6 classes</button>`;
+}
+async function booked(booking) {
+  history.replaceState(null, "", "/account.html");
+  await dashboard();
+  message(
+    booking.status === "unavailable"
+      ? "Sorry, that time was just taken. Your payment has been refunded; please choose another time."
+      : booking.status === "accepted"
         ? "Your session is booked. Check your email for the details."
         : "Your booking request is saved. Check its status below.",
-    );
-  });
+    booking.status === "unavailable",
+  );
 }
 async function staffList() {
   const data = await api("/api/portal/admin/intakes");
@@ -498,7 +528,30 @@ async function load() {
     const session = await api("/api/auth/get-session");
     if (!session?.user) return signIn({ focusHeading: false });
     me = await api("/api/portal/me");
-    const flowId = new URLSearchParams(location.search).get("flow");
+    const params = new URLSearchParams(location.search);
+    const flowId = params.get("flow");
+    const returned = params.get("checkout");
+    if (returned) {
+      params.delete("checkout");
+      history.replaceState(
+        null,
+        "",
+        `${location.pathname}${params.size ? "?" + params : ""}`,
+      );
+      if (returned === "cancelled")
+        message("Payment cancelled. Nothing was charged.");
+      else {
+        const result = await api("/api/portal/checkout/complete", {
+          sessionId: returned,
+        });
+        me.credits = result.credits;
+        if (!result.paid)
+          message("Your payment has not completed. Nothing was booked.", true);
+        else if (result.booking) return await booked(result.booking);
+        else
+          message(`Thank you! You now have ${result.credits} class credits.`);
+      }
+    }
     if (flowId) {
       flow = { id: flowId };
       return await resumeFlow();

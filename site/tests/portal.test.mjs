@@ -2,7 +2,8 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
-import { portal, calWebhook } from "../server/portal.js";
+import { portal, calWebhook, stripeWebhook } from "../server/portal.js";
+import { PRICES, verifyStripeSignature } from "../server/stripe.js";
 import {
   encryptIntake,
   decryptIntake,
@@ -52,6 +53,37 @@ const cal = {
     assert.fail("Website must never auto-confirm Heidi’s pending requests");
   },
 };
+let sessionCount = 0;
+const sessions = new Map();
+const refunds = [];
+const createdSessions = [];
+const pay = {
+  createSession: async (body, key) => {
+    const id = "cs_test_" + ++sessionCount;
+    createdSessions.push({ id, body, key });
+    sessions.set(id, {
+      id,
+      metadata: body.metadata,
+      payment_status: "unpaid",
+      status: "open",
+    });
+    return { id, url: "https://checkout.stripe.test/" + id };
+  },
+  getSession: async (id) => sessions.get(id),
+  refund: async (paymentIntent, key) => {
+    refunds.push({ paymentIntent, key });
+    return { id: "re_" + refunds.length };
+  },
+};
+function markPaid(url) {
+  const id = url.split("/").pop();
+  Object.assign(sessions.get(id), {
+    payment_status: "paid",
+    status: "complete",
+    payment_intent: "pi_" + id,
+  });
+  return id;
+}
 async function request(path, body, who = user, extra = {}) {
   return portal(
     new Request(env.APP_ORIGIN + "/api/portal" + path, {
@@ -64,6 +96,7 @@ async function request(path, body, who = user, extra = {}) {
       db,
       auth: { api: { getSession: async () => (who ? { user: who } : null) } },
       cal,
+      pay,
       ...extra,
     },
   );
@@ -78,6 +111,7 @@ before(async () => {
     "003_adult_intakes.sql",
     "004_intake_reviews.sql",
     "005_virtual_private.sql",
+    "006_payments.sql",
   ])
     await pg.exec(
       await readFile(new URL("../migrations/" + file, import.meta.url), "utf8"),
@@ -513,11 +547,31 @@ test("virtual private adult and child events share the correct IDs and intake ga
   );
   assert.equal(observedEventId, 102);
   assert.equal(observedSlotEventId, 102);
-  const result = await data(`/flows/${flow.id}/book`, {
+  const callsBeforeCheckout = calls;
+  const pending = await data(`/flows/${flow.id}/book`, {
     start,
     timeZone: "America/New_York",
     name: virtualUser.name,
   }, virtualUser);
+  // Payment comes first: nothing is booked until Stripe reports it paid.
+  assert.match(pending.checkoutUrl, /^https:\/\/checkout\.stripe\.test\//);
+  assert.equal(calls, callsBeforeCheckout);
+  const lessonSession = createdSessions.at(-1);
+  assert.equal(lessonSession.body.line_items[0].price_data.unit_amount, 4000);
+  assert.equal(lessonSession.body.line_items[0].price_data.currency, "cad");
+  assert.equal(lessonSession.body.customer_email, virtualUser.email);
+  const unpaid = await data(
+    "/checkout/complete",
+    { sessionId: lessonSession.id },
+    virtualUser,
+  );
+  assert.equal(unpaid.paid, false);
+  assert.equal(unpaid.booking, null);
+  const result = await data(
+    "/checkout/complete",
+    { sessionId: markPaid(pending.checkoutUrl) },
+    virtualUser,
+  );
   assert.equal(result.booking.service, "virtual_private");
   assert.equal(result.booking.status, "pending");
   assert.equal(observedBookingEventId, 102);
@@ -567,11 +621,23 @@ test("virtual private adult and child events share the correct IDs and intake ga
   );
   assert.equal(observedEventId, 101);
   assert.equal(observedSlotEventId, 101);
-  const adultBooking = await data(`/flows/${adultFlow.id}/book`, {
+  const adultCheckout = await data(`/flows/${adultFlow.id}/book`, {
     start,
     timeZone: "America/New_York",
     name: virtualUser.name,
   }, virtualUser);
+  const adultBooking = await data(
+    "/checkout/complete",
+    { sessionId: markPaid(adultCheckout.checkoutUrl) },
+    virtualUser,
+  );
+  // Completing again (browser return plus webhook) never books twice.
+  const again = await data(
+    "/checkout/complete",
+    { sessionId: adultCheckout.checkoutUrl.split("/").pop() },
+    virtualUser,
+  );
+  assert.equal(again.booking.id, adultBooking.booking.id);
   assert.equal(adultBooking.booking.service, "virtual_private");
   assert.equal(observedBookingEventId, 101);
 });
@@ -845,3 +911,165 @@ test("parents cannot reserve child appointments on or after a future eighteenth 
     (e) => e.status === 403,
   );
 });
+
+async function groupUser(id) {
+  const who = {
+    id,
+    email: `${id}@example.invalid`,
+    name: "Group Client",
+    emailVerified: true,
+  };
+  const flow = await data("/flows", { service: "virtual", childId: null }, who);
+  await data(
+    `/flows/${flow.id}/intake`,
+    {
+      clientName: who.name,
+      birthDate: "1980-01-01",
+      address: "1 Main",
+      city: "City",
+      province: "QC",
+      postalCode: "H0H 0H0",
+      email: who.email,
+      preferredPhone: "cell",
+      reason: "Group class",
+      signature: who.name,
+      signDate: new Date().toISOString().slice(0, 10),
+      educationInitials: "GC",
+      discomfortInitials: "GC",
+      healthInitials: "GC",
+      cancellationInitials: "GC",
+      releasorName: who.name,
+      conditions: [],
+    },
+    who,
+  );
+  return { who, flow };
+}
+const later = (days) => ({
+  start: new Date(Date.now() + days * 86400000).toISOString(),
+  timeZone: "UTC",
+  name: "Group Client",
+});
+
+test("group classes need a credit, and a paid package adds six credits exactly once", async () => {
+  const { who, flow } = await groupUser("group-buyer");
+  await assert.rejects(
+    request(`/flows/${flow.id}/book`, later(3), who),
+    (e) => e.status === 402,
+  );
+  assert.equal(
+    (await db.query("SELECT count(*)::int AS n FROM bookings WHERE flow_id=$1", [flow.id]))[0].n,
+    0,
+  );
+  const { checkoutUrl } = await data("/credits/checkout", { flowId: flow.id }, who);
+  const session = createdSessions.at(-1);
+  assert.equal(session.body.line_items[0].price_data.unit_amount, PRICES.group_credits.amount);
+  assert.equal(session.body.line_items[0].price_data.currency, "usd");
+  assert.match(session.body.success_url, new RegExp(`/book\\.html\\?flow=${flow.id}&checkout=`));
+  const id = markPaid(checkoutUrl);
+  assert.equal((await data("/checkout/complete", { sessionId: id }, who)).credits, 6);
+  assert.equal((await data("/checkout/complete", { sessionId: id }, who)).credits, 6);
+  // Another client cannot claim someone else’s checkout.
+  await assert.rejects(
+    request("/checkout/complete", { sessionId: id }, user),
+    (e) => e.status === 404,
+  );
+  const booked = await data(`/flows/${flow.id}/book`, later(3), who);
+  assert.equal(booked.booking.service, "virtual");
+  // A repeated click returns the same booking without spending another credit.
+  await data(`/flows/${flow.id}/book`, later(3), who);
+  assert.equal((await data("/me", undefined, who)).credits, 5);
+});
+
+test("timely cancellations return the credit; late ones forfeit it", async () => {
+  const { who } = await groupUser("group-canceller");
+  const { checkoutUrl } = await data("/credits/checkout", { flowId: null }, who);
+  await data("/checkout/complete", { sessionId: markPaid(checkoutUrl) }, who);
+  async function bookAndCancel(days) {
+    const flow = await data("/flows", { service: "virtual", childId: null }, who);
+    const { booking } = await data(`/flows/${flow.id}/book`, later(days), who);
+    const [row] = await db.query("SELECT * FROM bookings WHERE id=$1", [booking.id]);
+    const cancelling = {
+      ...cal,
+      get: async () => ({
+        uid: row.cal_uid,
+        eventTypeId: row.event_type_id,
+        status: "cancelled",
+        start: new Date(row.start_at).toISOString(),
+        attendees: [{ email: who.email }],
+      }),
+    };
+    await request("/me", undefined, who, { cal: cancelling });
+    await request("/me", undefined, who, { cal: cancelling });
+    return (await data("/me", undefined, who)).credits;
+  }
+  assert.equal(await bookAndCancel(3), 6);
+  assert.equal(await bookAndCancel(0.5), 5);
+});
+
+test("a taken time refunds the lesson, and a second paid checkout is refunded", async () => {
+  const { who } = await groupUser("lesson-client");
+  const flow = await data("/flows", { service: "virtual_private", childId: null }, who);
+  const first = await data(`/flows/${flow.id}/book`, later(4), who);
+  const second = await data(`/flows/${flow.id}/book`, later(4), who);
+  const taken = {
+    ...cal,
+    create: async () => {
+      const { HttpError } = await import("../server/http.js");
+      throw new HttpError(409, "That time is no longer available.");
+    },
+  };
+  const firstId = markPaid(first.checkoutUrl);
+  const response = await request("/checkout/complete", { sessionId: firstId }, who, { cal: taken });
+  assert.equal((await response.json()).booking.status, "unavailable");
+  assert.deepEqual(refunds.at(-1), { paymentIntent: "pi_" + firstId, key: `refund-${(await db.query("SELECT id FROM payments WHERE stripe_session_id=$1", [firstId]))[0].id}` });
+  const secondId = markPaid(second.checkoutUrl);
+  const before = refunds.length;
+  await data("/checkout/complete", { sessionId: secondId }, who);
+  assert.equal(refunds.length, before + 1);
+  assert.equal(refunds.at(-1).paymentIntent, "pi_" + secondId);
+  const statuses = await db.query("SELECT status FROM payments WHERE flow_id=$1", [flow.id]);
+  assert.deepEqual(statuses.map((p) => p.status), ["refunded", "refunded"]);
+});
+
+test("Stripe webhooks require a fresh valid signature and settle the payment", async () => {
+  const { who } = await groupUser("webhook-client");
+  const { checkoutUrl } = await data("/credits/checkout", { flowId: null }, who);
+  const id = markPaid(checkoutUrl);
+  env.STRIPE_WEBHOOK_SECRET = "whsec_test";
+  const raw = JSON.stringify({
+    type: "checkout.session.completed",
+    data: { object: sessions.get(id) },
+  });
+  async function sign(t, body = raw) {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const v1 = Buffer.from(
+      await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${t}.${body}`)),
+    ).toString("hex");
+    return `t=${t},v1=${v1}`;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  assert.equal(await verifyStripeSignature(raw, await sign(now - 600), env.STRIPE_WEBHOOK_SECRET), false);
+  assert.equal(await verifyStripeSignature(raw + " ", await sign(now), env.STRIPE_WEBHOOK_SECRET), false);
+  const post = async (signature) =>
+    stripeWebhook(
+      new Request("https://test.invalid/api/stripe/webhook", {
+        method: "POST",
+        headers: { "stripe-signature": signature },
+        body: raw,
+      }),
+      env,
+      { db, cal, pay },
+    );
+  await assert.rejects(post("t=1,v1=00"), (e) => e.status === 401);
+  await post(await sign(now));
+  await post(await sign(now));
+  assert.equal((await data("/me", undefined, who)).credits, 6);
+});
+

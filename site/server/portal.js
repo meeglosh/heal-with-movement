@@ -2,6 +2,7 @@ import { isAdult, easternDate } from "./age.js";
 import { json, readJSON, checkOrigin, HttpError } from "./http.js";
 import { encryptIntake, decryptIntake, verifySignature } from "./crypto.js";
 import { eventId, validateEvent } from "./cal.js";
+import { PRICES, stripe, verifyStripeSignature } from "./stripe.js";
 import {
   id,
   childInput,
@@ -9,6 +10,8 @@ import {
   intakeInput,
   adultIntakeInput,
   bookingInput,
+  creditCheckoutInput,
+  checkoutCompleteInput,
 } from "./validation.js";
 import { adultIntakeForm } from "./adult-intake-form.js";
 import { intakeForm } from "./intake-form.js";
@@ -75,7 +78,11 @@ function publicBooking(b) {
     status: b.status,
   };
 }
-export async function portal(request, env, { db, auth, cal }) {
+export async function portal(
+  request,
+  env,
+  { db, auth, cal, pay = stripe(env) },
+) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/api\/portal/, "");
   checkOrigin(request, env.APP_ORIGIN);
@@ -111,6 +118,7 @@ export async function portal(request, env, { db, auth, cal }) {
               { ...booking, email: user.email },
               undefined,
               booking,
+              pay,
             );
           } catch {
             /* Keep the last known status when Cal.com is temporarily unavailable. */
@@ -121,7 +129,12 @@ export async function portal(request, env, { db, auth, cal }) {
       "SELECT c.id::text,c.name,'child' AS kind,i.reviewed_at + interval '6 months' AS due_at FROM intakes i JOIN children c ON c.id=i.child_id WHERE c.guardian_id=$1 AND i.reviewed_at + interval '6 months' <= now() UNION ALL SELECT a.user_id,u.name,'adult' AS kind,a.reviewed_at + interval '6 months' AS due_at FROM adult_intakes a JOIN portal_users u ON u.id=a.user_id WHERE a.user_id=$1 AND a.reviewed_at + interval '6 months' <= now()",
       [user.id],
     );
+    const [credit] = await db.query(
+      "SELECT balance FROM credit_balances WHERE user_id=$1",
+      [user.id],
+    );
     return json({
+      credits: credit?.balance || 0,
       reviews: reviews.filter(
         (r) =>
           r.kind === "adult" ||
@@ -363,73 +376,101 @@ export async function portal(request, env, { db, auth, cal }) {
             { booking: publicBooking(existing) },
             existing.status === "creating" ? 202 : 200,
           );
+        if (flow.service === "virtual_private")
+          return json({
+            checkoutUrl: await startLessonCheckout(db, pay, env, {
+              flow,
+              user,
+              input,
+            }),
+          });
+        const usesCredit = flow.service === "virtual";
         const bookingId = crypto.randomUUID();
-        const rows = await db.query(
-          `INSERT INTO bookings(id,flow_id,user_id,child_id,service,event_type_id,start_at,time_zone) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(flow_id) DO NOTHING RETURNING *`,
-          [
-            bookingId,
-            flow.id,
-            user.id,
-            flow.child_id,
-            flow.service,
-            eid,
-            input.start,
-            input.timeZone,
-          ],
-        );
+        const values = [
+          bookingId,
+          flow.id,
+          user.id,
+          flow.child_id,
+          flow.service,
+          eid,
+          input.start,
+          input.timeZone,
+        ];
+        // Claim the booking and spend one class credit in a single statement, so
+        // retries and concurrent tabs can never spend a credit twice.
+        const rows = usesCredit
+          ? await db.query(
+              `WITH b AS (INSERT INTO bookings(id,flow_id,user_id,child_id,service,event_type_id,start_at,time_zone,uses_credit) VALUES($1,$2,$3,$4,$5,$6,$7,$8,true) ON CONFLICT(flow_id) DO NOTHING RETURNING *), d AS (UPDATE credit_balances SET balance=balance-1 WHERE user_id=$3 AND balance>=1 AND EXISTS(SELECT 1 FROM b) RETURNING user_id), l AS (INSERT INTO credit_ledger(id,user_id,delta,reason,booking_id) SELECT $9,user_id,-1,'booking',$1 FROM d) SELECT b.*,EXISTS(SELECT 1 FROM d) AS debited FROM b`,
+              [...values, crypto.randomUUID()],
+            )
+          : await db.query(
+              `INSERT INTO bookings(id,flow_id,user_id,child_id,service,event_type_id,start_at,time_zone) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(flow_id) DO NOTHING RETURNING *`,
+              values,
+            );
         if (!rows.length)
           throw new HttpError(
             409,
             "This booking is already being processed. Check your appointments.",
           );
-        // Durable creation claim prevents repeated clicks or network retries from double-booking.
-        // An uncertain upstream response is retained for reconciliation, never blindly retried.
-        let remote;
-        try {
-          remote = await cal.create({
-            eventTypeId: eid,
-            start: input.start,
-            attendee: {
-              name: input.name,
-              email: user.email,
-              timeZone: input.timeZone,
-              language: "en",
-            },
-            metadata: { portalBookingId: bookingId },
-          });
-        } catch (error) {
-          await db.query(
-            "UPDATE bookings SET status='needs_review',updated_at=now() WHERE id=$1 AND cal_uid IS NULL",
-            [bookingId],
-          );
-          throw error;
-        }
-        if (!remote?.uid) {
-          await db.query(
-            "UPDATE bookings SET status='needs_review' WHERE id=$1",
-            [bookingId],
-          );
+        if (usesCredit && !rows[0].debited) {
+          await db.query("DELETE FROM bookings WHERE id=$1", [bookingId]);
           throw new HttpError(
-            502,
-            "Please check your appointments or contact Heidi before trying again.",
+            402,
+            "You have no class credits left. Buy a class package to book.",
           );
         }
-        await db.query(
-          "UPDATE bookings SET cal_uid=$2,status=$3,cal_seat_uid=$4,updated_at=now() WHERE id=$1",
-          [
-            bookingId,
-            remote.uid,
-            remote.status || "pending",
-            remote.seatUid || null,
-          ],
-        );
-        // Leave pending requests for Heidi to accept or reject in Cal.com.
-        const [saved] = await db.query("SELECT * FROM bookings WHERE id=$1", [
-          bookingId,
-        ]);
+        const saved = await sendToCalendar(db, cal, pay, rows[0], {
+          name: input.name,
+          email: user.email,
+          timeZone: input.timeZone,
+        });
         return json({ booking: publicBooking(saved) }, 201);
       }
     }
+  }
+  if (path === "/credits/checkout" && request.method === "POST") {
+    const { flowId } = parse(creditCheckoutInput, await readJSON(request));
+    if (flowId) await ownedFlow(db, user.id, flowId);
+    const price = PRICES.group_credits;
+    const paymentId = crypto.randomUUID();
+    await db.query(
+      "INSERT INTO payments(id,user_id,kind,amount,currency,credits) VALUES($1,$2,'group_credits',$3,$4,$5)",
+      [paymentId, user.id, price.amount, price.currency, price.credits],
+    );
+    const back = flowId
+      ? `/book.html?flow=${encodeURIComponent(flowId)}`
+      : "/account.html";
+    return json({
+      checkoutUrl: await openCheckout(db, pay, env, {
+        paymentId,
+        user,
+        price,
+        back,
+      }),
+    });
+  }
+  if (path === "/checkout/complete" && request.method === "POST") {
+    const { sessionId } = parse(checkoutCompleteInput, await readJSON(request));
+    const [payment] = await db.query(
+      "SELECT * FROM payments WHERE stripe_session_id=$1 AND user_id=$2",
+      [sessionId, user.id],
+    );
+    if (!payment) throw new HttpError(404, "Payment not found.");
+    const result = await settle(
+      { db, cal, pay, env },
+      payment,
+      await pay.getSession(sessionId),
+    );
+    const [credit] = await db.query(
+      "SELECT balance FROM credit_balances WHERE user_id=$1",
+      [user.id],
+    );
+    return json({
+      kind: payment.kind,
+      paid: result.paid,
+      credits: credit?.balance || 0,
+      booking: result.booking ? publicBooking(result.booking) : null,
+    });
   }
   if (path === "/admin/intakes" && request.method === "GET") {
     if (!isStaff(user, env)) throw new HttpError(403, "Staff access required.");
@@ -487,7 +528,7 @@ export async function portal(request, env, { db, auth, cal }) {
   throw new HttpError(404, "Not found.");
 }
 
-export async function calWebhook(request, env, { db, cal }) {
+export async function calWebhook(request, env, { db, cal, pay = stripe(env) }) {
   if (request.method !== "POST")
     throw new HttpError(405, "Method not allowed.");
   const data = await readJSON(request.clone());
@@ -510,11 +551,11 @@ export async function calWebhook(request, env, { db, cal }) {
     [payload.uid, previous],
   );
   for (const booking of candidates)
-    await refreshBooking(db, cal, booking, remote);
+    await refreshBooking(db, cal, booking, remote, undefined, pay);
   return json({ ok: true });
 }
 
-async function refreshBooking(db, cal, booking, remote, target) {
+async function refreshBooking(db, cal, booking, remote, target, pay) {
   let current = booking.cal_seat_uid
     ? await cal.getSeat(booking.cal_seat_uid)
     : remote || (await cal.get(booking.cal_uid));
@@ -537,6 +578,16 @@ async function refreshBooking(db, cal, booking, remote, target) {
     "UPDATE bookings SET cal_uid=$2,status=$3,start_at=$4,updated_at=now() WHERE id=$1",
     [booking.id, current.uid, status, current.start],
   );
+  // Cancellations with 24 hours' notice, and Heidi's rejections, return the
+  // payment or class credit. Later cancellations forfeit it unless Heidi waives.
+  const ended = ["cancelled", "rejected"];
+  if (
+    !ended.includes(booking.status) &&
+    (status === "rejected" ||
+      (status === "cancelled" &&
+        Date.parse(current.start) - Date.now() >= 24 * 3600000))
+  )
+    await compensate(db, pay, booking);
 
   if (target)
     Object.assign(target, {
@@ -544,4 +595,249 @@ async function refreshBooking(db, cal, booking, remote, target) {
       status,
       start_at: current.start,
     });
+}
+
+async function sendToCalendar(db, cal, pay, booking, attendee) {
+  // Durable creation claim prevents repeated clicks or network retries from double-booking.
+  // An uncertain upstream response is retained for reconciliation, never blindly retried.
+  let remote;
+  try {
+    remote = await cal.create({
+      eventTypeId: booking.event_type_id,
+      start: new Date(booking.start_at).toISOString(),
+      attendee: { ...attendee, language: "en" },
+      metadata: { portalBookingId: booking.id },
+    });
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 409) {
+      // Cal.com definitively refused the time, so nothing was booked.
+      await db.query(
+        "UPDATE bookings SET status='unavailable',updated_at=now() WHERE id=$1",
+        [booking.id],
+      );
+      await compensate(db, pay, booking);
+    } else
+      await db.query(
+        "UPDATE bookings SET status='needs_review',updated_at=now() WHERE id=$1 AND cal_uid IS NULL",
+        [booking.id],
+      );
+    throw error;
+  }
+  if (!remote?.uid) {
+    await db.query("UPDATE bookings SET status='needs_review' WHERE id=$1", [
+      booking.id,
+    ]);
+    throw new HttpError(
+      502,
+      "Please check your appointments or contact Heidi before trying again.",
+    );
+  }
+  // Leave pending requests for Heidi to accept or reject in Cal.com.
+  const [saved] = await db.query(
+    "UPDATE bookings SET cal_uid=$2,status=$3,cal_seat_uid=$4,updated_at=now() WHERE id=$1 RETURNING *",
+    [
+      booking.id,
+      remote.uid,
+      remote.status || "pending",
+      remote.seatUid || null,
+    ],
+  );
+  return saved;
+}
+
+async function compensate(db, pay, booking) {
+  if (booking.uses_credit)
+    await db.query(
+      "WITH l AS (INSERT INTO credit_ledger(id,user_id,delta,reason,booking_id) VALUES($1,$2,1,'restore',$3) ON CONFLICT (booking_id) WHERE reason='restore' DO NOTHING RETURNING user_id) UPDATE credit_balances SET balance=balance+1 WHERE user_id IN (SELECT user_id FROM l)",
+      [crypto.randomUUID(), booking.user_id, booking.id],
+    );
+  if (booking.payment_id) await refundPayment(db, pay, booking.payment_id);
+}
+
+async function refundPayment(db, pay, paymentId) {
+  const [payment] = await db.query(
+    "SELECT * FROM payments WHERE id=$1 AND status='paid'",
+    [paymentId],
+  );
+  if (!payment?.stripe_payment_intent) return;
+  // The idempotency key makes a repeated refund request a no-op at Stripe.
+  await pay.refund(payment.stripe_payment_intent, `refund-${paymentId}`);
+  await db.query(
+    "UPDATE payments SET status='refunded',updated_at=now() WHERE id=$1",
+    [paymentId],
+  );
+}
+
+async function openCheckout(db, pay, env, { paymentId, user, price, back }) {
+  const join = back.includes("?") ? "&" : "?";
+  const session = await pay.createSession(
+    {
+      mode: "payment",
+      customer_email: user.email,
+      client_reference_id: paymentId,
+      success_url: `${env.APP_ORIGIN}${back}${join}checkout={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${env.APP_ORIGIN}${back}${join}checkout=cancelled`,
+      // Stripe's minimum; keeps an unpaid lesson from lingering.
+      expires_at: Math.floor(Date.now() / 1000) + 1800,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: price.currency,
+            unit_amount: price.amount,
+            product_data: { name: price.name },
+          },
+        },
+      ],
+      metadata: { payment_id: paymentId },
+      payment_intent_data: { metadata: { payment_id: paymentId } },
+    },
+    `checkout-${paymentId}`,
+  );
+  if (!session?.id || !session.url)
+    throw new HttpError(502, "The payment could not be started.");
+  await db.query(
+    "UPDATE payments SET stripe_session_id=$2,updated_at=now() WHERE id=$1",
+    [paymentId, session.id],
+  );
+  return session.url;
+}
+
+async function startLessonCheckout(db, pay, env, { flow, user, input }) {
+  const price = PRICES.virtual_private;
+  const paymentId = crypto.randomUUID();
+  await db.query(
+    "INSERT INTO payments(id,user_id,kind,flow_id,start_at,time_zone,attendee_name,amount,currency) VALUES($1,$2,'private_lesson',$3,$4,$5,$6,$7,$8)",
+    [
+      paymentId,
+      user.id,
+      flow.id,
+      input.start,
+      input.timeZone,
+      input.name,
+      price.amount,
+      price.currency,
+    ],
+  );
+  return openCheckout(db, pay, env, {
+    paymentId,
+    user,
+    price,
+    back: `/book.html?flow=${encodeURIComponent(flow.id)}`,
+  });
+}
+
+// Applies a Checkout Session to local state. Safe to run repeatedly, from the
+// browser return and the Stripe webhook alike.
+async function settle({ db, cal, pay, env }, payment, session) {
+  if (
+    session?.id !== payment.stripe_session_id &&
+    session?.metadata?.payment_id !== payment.id
+  )
+    throw new HttpError(400, "Payment does not match.");
+  if (session.payment_status !== "paid") {
+    if (session.status === "expired")
+      await db.query(
+        "UPDATE payments SET status='expired',updated_at=now() WHERE id=$1 AND status='open'",
+        [payment.id],
+      );
+    return { paid: false };
+  }
+  const intent =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id;
+  if (payment.kind === "group_credits") {
+    await db.query(
+      "WITH p AS (UPDATE payments SET status='paid',stripe_payment_intent=$2,stripe_session_id=$3,updated_at=now() WHERE id=$1 AND status IN ('open','expired') RETURNING id,user_id,credits), l AS (INSERT INTO credit_ledger(id,user_id,delta,reason,payment_id) SELECT $4,user_id,credits,'purchase',id FROM p RETURNING user_id,delta) INSERT INTO credit_balances(user_id,balance) SELECT user_id,delta FROM l ON CONFLICT(user_id) DO UPDATE SET balance=credit_balances.balance+EXCLUDED.balance",
+      [payment.id, intent, session.id, crypto.randomUUID()],
+    );
+    return { paid: true };
+  }
+  await db.query(
+    "UPDATE payments SET status='paid',stripe_payment_intent=$2,stripe_session_id=$3,updated_at=now() WHERE id=$1 AND status IN ('open','expired')",
+    [payment.id, intent, session.id],
+  );
+  const [flow] = await db.query(
+    "SELECT f.*,u.email FROM booking_flows f JOIN portal_users u ON u.id=f.user_id WHERE f.id=$1 AND f.user_id=$2",
+    [payment.flow_id, payment.user_id],
+  );
+  const [claimed] = await db.query(
+    "INSERT INTO bookings(id,flow_id,user_id,child_id,service,event_type_id,start_at,time_zone,payment_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(flow_id) DO NOTHING RETURNING *",
+    [
+      crypto.randomUUID(),
+      flow.id,
+      flow.user_id,
+      flow.child_id,
+      flow.service,
+      eventId(env, flow.service, !!flow.child_id),
+      payment.start_at,
+      payment.time_zone,
+      payment.id,
+    ],
+  );
+  if (!claimed) {
+    const [existing] = await db.query(
+      "SELECT * FROM bookings WHERE flow_id=$1",
+      [flow.id],
+    );
+    // A second paid checkout for the same booking (another tab) is refunded.
+    if (existing.payment_id !== payment.id)
+      await refundPayment(db, pay, payment.id);
+    return { paid: true, booking: existing };
+  }
+  try {
+    return {
+      paid: true,
+      booking: await sendToCalendar(db, cal, pay, claimed, {
+        name: payment.attendee_name,
+        email: flow.email,
+        timeZone: payment.time_zone,
+      }),
+    };
+  } catch (error) {
+    const [booking] = await db.query("SELECT * FROM bookings WHERE id=$1", [
+      claimed.id,
+    ]);
+    if (booking.status === "unavailable") return { paid: true, booking };
+    throw error;
+  }
+}
+
+export async function stripeWebhook(
+  request,
+  env,
+  { db, cal, pay = stripe(env) },
+) {
+  if (request.method !== "POST")
+    throw new HttpError(405, "Method not allowed.");
+  const raw = await request.text();
+  if (
+    !(await verifyStripeSignature(
+      raw,
+      request.headers.get("stripe-signature"),
+      env.STRIPE_WEBHOOK_SECRET,
+    ))
+  )
+    throw new HttpError(401, "Invalid webhook signature.");
+  const event = JSON.parse(raw);
+  const handled = [
+    "checkout.session.completed",
+    "checkout.session.async_payment_succeeded",
+    "checkout.session.expired",
+  ];
+  if (!handled.includes(event.type)) return json({ ok: true });
+  const session = event.data?.object;
+  const [payment] = await db.query(
+    "SELECT * FROM payments WHERE stripe_session_id=$1 OR id::text=$2",
+    [session?.id, String(session?.metadata?.payment_id || "")],
+  );
+  if (!payment) return json({ ok: true });
+  try {
+    await settle({ db, cal, pay, env }, payment, session);
+  } catch (error) {
+    // The booking is recorded for review; Stripe retrying would not help.
+    if (!(error instanceof HttpError)) throw error;
+  }
+  return json({ ok: true });
 }
