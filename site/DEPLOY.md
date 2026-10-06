@@ -14,7 +14,7 @@ npm run dev -- --port 8788
 
 Open http://localhost:8788/book. A plain static server cannot run the booking API.
 
-The linked Neon project is `billowing-river-83678674`. `neon.ts` enables managed authentication. `neon deploy` deploys Neon configuration, not the website. The `dev-client-booking` branch is isolated from production and currently expires October 3, 2026; extend or recreate it before then.
+The linked Neon project is `billowing-river-83678674`. `neon.ts` enables managed authentication. `neon deploy` deploys Neon configuration, not the website. The `dev-client-booking` branch is isolated from production. It was recreated from the (then empty) production branch on October 6, 2026, has no expiry, and has its own Neon Auth endpoint. Production's `portal_migrations` table was empty although migrations 001–005 were applied there; they were recorded on the development branch before applying 006, and production needs the same before `scripts/migrate.mjs` can run against it.
 
 The development connection was pulled into ignored `site/.env.development`. Runtime secrets belong in ignored `site/.dev.vars`. Never commit either file. To apply the portal schema to a selected branch:
 
