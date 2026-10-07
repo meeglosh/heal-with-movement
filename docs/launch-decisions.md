@@ -30,8 +30,8 @@ them. See [open implementation and follow-up items](#open-items) before launch.
   and intake, and the public calendar should show two months ahead. The
   Tuesday evening class is an exception to the normal daytime schedule.
 - Group capacity is 50 maximum. Classes are for adults of all fitness levels
-  and older children; an age threshold of 12+ is provisional. Whether a parent
-  must participate with a child remains undecided.
+  and children aged 12 and over. A parent does not need to take part, and the
+  age note on the services page is enough (the site does not check age).
 - Cal Video will be used to start for virtual private lessons and group
   classes.
 - No street address should be published. Share the full address after booking.
@@ -48,7 +48,18 @@ them. See [open implementation and follow-up items](#open-items) before launch.
   reschedule. A prepaid group-class credit remains unused when Heidi cancels.
 - Online group and private sessions may be recorded occasionally, only after
   explicit consent. Only Heidi receives a recording; she keeps it for one
-  month and deletes it.
+  month and deletes it. Heidi asks for consent at the start of the session; a
+  parent consents for a child; a group participant who declines joins with
+  camera and microphone off.
+- In-person hours are Monday–Friday, 10 a.m.–5 p.m. Eastern: Vermont the first
+  week of each month (days 1–7), Montreal the rest. Virtual private lessons run
+  Monday–Friday, 10 a.m.–7 p.m. Eastern. There is no fixed street address to
+  publish.
+- Insurance coverage is not confirmed. The Terms follow Vermont and Quebec law.
+  The disclaimer says "lessons", not "treatment". Heidi approved the legal
+  pages without a lawyer's review (October 7, 2026).
+- Heidi wants a staff tool to return a forfeited class credit, and will refund
+  her own late cancellations in Stripe herself.
 
 ### Content, identity, and operations
 
@@ -68,37 +79,12 @@ them. See [open implementation and follow-up items](#open-items) before launch.
 
 ## Open items
 
-- Stripe checkout is built and uses a test-mode key: virtual private lessons
-  are paid at booking, and group classes use six-class credit packages. Before
-  launch it needs a live-mode key and a live-mode webhook endpoint, then a
-  deploy. The payments migration is applied in production.
-- Cancellations at least 24 hours ahead and Heidi's rejections now refund
-  the lesson or return the credit automatically; later ones forfeit. Still
-  missing: a staff tool to waive a forfeit by restoring a credit (refunds can
-  be issued in the Stripe Dashboard). Align
-  intake wording with this decision and test both virtual credits and paid
-  private bookings. The current booking system has no credit or refund tools.
-- The earlier monthly location split is only a preference, not active
-  availability. Exact in-person days and time windows, both street addresses,
-  and Vermont Cal.com availability are outstanding. Keep Montreal as the
-  default until Vermont is explicitly configured.
-- The 12+ child age threshold is provisional, and parent participation is
-  undecided.
-- Explicit consent is required before recording, but the consent process and
-  what happens when a group participant declines have not been specified.
-- Site-policy language still needs review and the requested intake-form
-  inclusion. A legal jurisdiction and the legal registration details were not
-  provided.
-- The newsletter is deferred. Heidi's biography has been supplied and applied
-  in the site content.
+- The newsletter stays on hold.
 
 ## Implementation status
 
-These are decisions to implement, not a claim that production is configured.
-Prices, payment collection, schedules, public group availability, participant
-limits, cancellation terms, recording controls, and approval behavior must be
-implemented and verified before they are represented as active booking rules.
-The website backend currently rejects paid Cal.com event types until checkout
-is implemented. The production scheduler still needs configuration to match
-the decisions above; the current setup uses the same Monday–Friday,
-10:00 a.m.–5:00 p.m. Eastern schedule across services, has no payment or credit support.
+As of October 7, 2026 every decision above is implemented on the live site:
+card payments and refunds, group credits and drop-ins, the group schedule and
+50-seat cap, the location weeks and virtual hours, first-booking-only child
+approval, the disclaimer checkbox for virtual sessions, and the staff tool for
+returning class credits. Recording consent is handled by Heidi in session.

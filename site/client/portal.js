@@ -15,7 +15,7 @@ let me,
   name = "",
   selectedChild = null,
   selectedService =
-    new URLSearchParams(location.search).get("location") || "vermont",
+    new URLSearchParams(location.search).get("location") || "montreal",
   week = 0;
 const prices = {
   virtual_private: "CAD $40",
@@ -189,7 +189,7 @@ async function dashboard() {
       )
       .join(
         "",
-      )}${me.reviews?.length ? `<p class="portal-review-notice">Intake review due for ${me.reviews.map((r) => escape(r.kind === "adult" ? "you" : r.name)).join(", ")}. Please review your saved answers.</p><div class="portal-options">${me.reviews.map((r, i) => `<button class="portal-choice" data-review="${i}">Review ${r.kind === "adult" ? "your intake" : escape(r.name) + "’s intake"}</button>`).join("")}</div>` : ""}<p>Group class credits: <strong>${me.credits}</strong></p><button class="btn btn-primary" id="new-booking">Book a Session</button><button class="portal-link" id="buy-credits" style="margin-left:20px">Buy 6 group classes (${prices.group})</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", unavailable: "That time was taken — any payment or class credit has been returned", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review intake</button>' : ""}`,
+      )}${me.reviews?.length ? `<p class="portal-review-notice">Intake review due for ${me.reviews.map((r) => escape(r.kind === "adult" ? "you" : r.name)).join(", ")}. Please review your saved answers.</p><div class="portal-options">${me.reviews.map((r, i) => `<button class="portal-choice" data-review="${i}">Review ${r.kind === "adult" ? "your intake" : escape(r.name) + "’s intake"}</button>`).join("")}</div>` : ""}<p>Group class credits: <strong>${me.credits}</strong></p><button class="btn btn-primary" id="new-booking">Book a Session</button><button class="portal-link" id="buy-credits" style="margin-left:20px">Buy 6 group classes (${prices.group})</button><h3 style="margin-top:36px">Your appointments</h3>${me.bookings.length ? me.bookings.map((b) => `<article class="portal-booking"><strong>${escape(labels[b.service])}</strong><p>${escape(b.childName || "For yourself")}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}</p><p>${escape({ accepted: "Confirmed", pending: "Awaiting confirmation", creating: "Processing", needs_review: "Awaiting review — please contact Heidi before booking again", unavailable: "That time was taken — any payment or class credit has been returned", cancelled: "Cancelled", rejected: "Declined" }[b.status] || b.status)}</p></article>`).join("") : '<p class="muted">No appointments yet.</p>'}<p class="muted">To cancel or reschedule, use the link in your booking confirmation email or contact Heidi.</p>${me.staff ? '<button class="portal-link" id="staff-intakes">Review intake</button><button class="portal-link" id="staff-credits" style="margin-left:20px">Return class credits</button>' : ""}`,
   );
   wireToolbar();
   on("#buy-credits", () =>
@@ -210,6 +210,7 @@ async function dashboard() {
     });
   }
   on("#staff-intakes", staffList);
+  on("#staff-credits", staffCredits);
 }
 function choosePerson() {
   flow = null;
@@ -531,6 +532,35 @@ async function booked(booking) {
         ? "Your session is booked. Check your email for the details."
         : "Your booking request is saved. Check its status below.",
     booking.status === "unavailable",
+  );
+}
+async function staffCredits() {
+  const data = await api("/api/portal/admin/credits");
+  const statuses = {
+    accepted: "Booked",
+    cancelled: "Cancelled",
+    pending: "Awaiting confirmation",
+    needs_review: "Needs review",
+  };
+  render(
+    `${toolbar()}<h2>Return class credits.</h2><p>Group class bookings that used a credit. To waive a late cancellation or missed class, return the credit to the client’s account. Credits from cancellations made 24 hours ahead are returned automatically and are not listed.</p>${
+      data.bookings.length
+        ? data.bookings
+            .map(
+              (b) =>
+                `<article class="portal-booking"><strong>${escape(b.childName ? `${b.childName} (${b.clientName})` : b.clientName)}</strong><p>${escape(b.email)}</p><p>${escape(new Date(b.start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))} · ${escape(statuses[b.status] || b.status)}</p><button class="portal-link" data-restore="${escape(b.id)}">Return credit</button></article>`,
+            )
+            .join("")
+        : '<p class="muted">No group class bookings to review.</p>'
+    }`,
+  );
+  wireToolbar();
+  screen.querySelectorAll("[data-restore]").forEach((b) =>
+    on(`[data-restore="${b.dataset.restore}"]`, async () => {
+      await api(`/api/portal/admin/credits/${b.dataset.restore}/restore`, {});
+      await staffCredits();
+      message("Credit returned to the client’s account.");
+    }),
   );
 }
 async function staffList() {

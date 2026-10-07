@@ -51,8 +51,6 @@ function head({ title, description, path, ogImage = "/assets/img/og-image.jpg", 
 <link rel="stylesheet" href="/css/styles.css?v=${stylesVersion}">
 <link rel="stylesheet" href="/css/editorial.css?v=${editorialVersion}">
 ${jsonLd}
-<!-- Privacy-friendly analytics placeholder: swap data-domain / src for your Plausible or Cloudflare Web Analytics snippet -->
-<script defer data-domain="healwithmovement.com" src="https://plausible.io/js/script.js" data-placeholder="true"></script>
 `;
 }
 
@@ -615,7 +613,7 @@ const services = page({
         <p>In-person, one-on-one, Montreal, QC.</p>
         <p class="stat">CAD $85</p>
         <p class="hint">Session length: 60 minutes</p>
-        <p class="hint">In-person; invoiced after the session.</p>
+        <p class="hint">Monday–Friday, 10am–5pm Eastern, except the first week of each month. Invoiced after the session.</p>
         <a class="btn btn-primary btn-small" href="/book.html?location=montreal">Book Montreal</a>
       </div>
       <div class="card settle">
@@ -623,15 +621,15 @@ const services = page({
         <p>In-person, one-on-one, Chittenden County, VT.</p>
         <p class="stat">USD $80</p>
         <p class="hint">Session length: 60 minutes</p>
-        <p class="hint">In-person; invoiced after the session.</p>
-        <a class="btn btn-primary btn-small" href="mailto:heidi@healwithmovement.com?subject=Vermont%20lessons">Ask about Vermont lessons</a>
+        <p class="hint">First week of each month, Monday–Friday, 10am–5pm Eastern. Invoiced after the session.</p>
+        <a class="btn btn-primary btn-small" href="/book.html?location=vermont">Book Vermont</a>
       </div>
       <div class="card settle">
         <h3>Virtual Private Lesson</h3>
         <p>One-on-one by video, wherever you are in the world.</p>
         <p class="stat">CAD $40</p>
         <p class="hint">Session length: 60 minutes</p>
-        <p class="hint">Monday–Friday, 10am–5pm Eastern. Booking times are shown in your local time zone.</p>
+        <p class="hint">Monday–Friday, 10am–7pm Eastern. Booking times are shown in your local time zone.</p>
         <p class="hint">Prepaid by card.</p>
         <a class="btn btn-primary btn-small" href="mailto:heidi@healwithmovement.com?subject=Virtual%20private%20lessons">Ask about virtual private lessons</a>
       </div>
@@ -686,12 +684,13 @@ const accountPage = page({path:"/account.html",title:"My account | Heal with Mov
 const faqItems = [
   ["What is a NeuroMovement lesson like?", "Lessons are slow, gentle, and exploratory, Heidi guides small, varied movements by hand (or verbally, in group classes) so your nervous system can discover new, easier ways to move. There is no forcing or stretching to a point of pain."],
   ["Do I need any experience or equipment?", "No experience is necessary. Wear comfortable clothing you can move in. In-person sessions typically take place on a low table; virtual sessions can be done seated, lying down, or standing, depending on the class."],
-  ["Is this covered by insurance?", "{{INSURANCE_INFO}}, please confirm coverage with your provider; Heal with Movement can provide a receipt for services upon request."],
+  ["Is this covered by insurance?", "Insurance and HSA/FSA coverage for these lessons hasn't been confirmed. Please check with your provider; Heal with Movement can provide a receipt for your sessions on request."],
   ["What ages and conditions do you work with?", "Heidi works with children with developmental disabilities and special needs, adults recovering from injury or stroke, people with chronic conditions such as Parkinson's and multiple sclerosis, high performers, and anyone seeking greater ease of movement."],
   ["How do I book for my child?", "Sign in and add your child to your account. For in-person sessions, you’ll complete the child intake form as part of booking, and Heidi reviews every intake ahead of a first lesson with a new child client. Virtual sessions do not need an intake form."],
   ["What is the cancellation policy?", "Please give at least 24 hours' notice. Cancel in time and prepaid sessions are refunded, or your group class credit is returned. Later cancellations and missed sessions are charged in full, unless Heidi waives the charge, for example in an emergency. See the full Cancellation Policy page for details."],
   ["Do you offer virtual sessions?", "Yes. You can book a one-on-one private lesson by video from anywhere in the world, or join a live online group class."],
-  ["Where are in-person sessions held?", "In-person private lessons are offered in Montreal, Quebec and Chittenden County, Vermont. The full address is shared with you after you book."],
+  ["Are online sessions recorded?", "Only occasionally, and only with your consent: Heidi asks at the start of the session, and a parent consents for a child. In a group class, anyone who prefers not to be recorded can keep their camera and microphone off. Recordings are kept by Heidi alone for one month, then deleted."],
+  ["Where are in-person sessions held?", "In-person private lessons are offered in Chittenden County, Vermont, the first week of each month, and in Montreal, Quebec, the rest of the month. The full address is shared with you after you book."],
 ];
 const faq = page({
   path: "/faq.html",
@@ -729,22 +728,11 @@ const contact = page({
         <li><strong>Locations:</strong> Montreal, QC &amp; Chittenden County, VT (in-person) · Virtual (anywhere)</li>
       </ul>
     </div>
-    <form class="card settle" action="#" method="post" onsubmit="return false;">
-      <div class="field">
-        <label for="c-name">Name</label>
-        <input type="text" id="c-name" name="name" required autocomplete="name">
-      </div>
-      <div class="field">
-        <label for="c-email">Email</label>
-        <input type="email" id="c-email" name="email" required autocomplete="email">
-      </div>
-      <div class="field">
-        <label for="c-message">Message</label>
-        <textarea id="c-message" name="message" required></textarea>
-      </div>
-      <p class="hint">This form is a UI placeholder, wire it to a Cloudflare Pages Function + Resend (mirroring <code>functions/api/intake.js</code>) or a form service before launch.</p>
-      <button class="btn btn-primary" type="submit">Send message</button>
-    </form>
+    <div class="card settle">
+      <h2>Write to Heidi</h2>
+      <p>The quickest way to reach Heidi is by email. She usually replies within a few days.</p>
+      <a class="btn btn-primary" href="mailto:heidi@healwithmovement.com">Email heidi@healwithmovement.com</a>
+    </div>
   </div>
 </section>
 `,
@@ -759,13 +747,10 @@ function legalPage({ path, title, heading, body }) {
     body: `
 <section class="section">
   <div class="wrap" style="max-width:800px;">
-    <div class="skip-note" style="margin-bottom:2em;">
-      <strong>Draft for Heidi's review.</strong> This is a placeholder legal draft, not legal advice. Please have it reviewed by a qualified attorney (and, for Quebec/Law 25 matters, one familiar with Quebec privacy law) before publishing. <span class="placeholder-tag">DRAFT</span>
-    </div>
     <p class="eyebrow">Legal</p>
     <h1>${heading}</h1>
     ${body}
-    <p class="hint">Last updated: {{LEGAL_DATE}}</p>
+    <p class="hint">Last updated: October 7, 2026</p>
   </div>
 </section>
 `,
@@ -779,13 +764,17 @@ const privacy = legalPage({
   body: `
 <p>Heal with Movement ("we", "us") respects your privacy. This policy explains what information we collect through healwithmovement.com and how we use it.</p>
 <h3>Information we collect</h3>
-<p>Contact form submissions (name, email, message); child intake form submissions (health history and contact details, used only to prepare for sessions); booking information collected by our scheduling provider, Cal.com, and payment information collected by Stripe (we do not store card numbers); anonymized analytics data via our privacy-friendly analytics provider.</p>
+<p>Your name and email address when you create an account; details of children you add (name and date of birth); intake forms for in-person sessions (contact details and health history, used only to prepare for sessions); your bookings and your agreement to our Medical Disclaimer and Cancellation Policy for virtual sessions; and payment records from Stripe (we never see or store card numbers). The site does not use advertising or analytics trackers.</p>
 <h3>How we use it</h3>
-<p>To respond to inquiries, schedule and prepare for sessions, and improve the site. We do not sell personal information.</p>
+<p>To schedule, prepare for and run your sessions, take payment, and respond to you. We do not sell personal information.</p>
+<h3>Who can see it, and for how long</h3>
+<p>Only Heidi Rood can access account and intake records. Intake answers are stored encrypted. Records for adults and children are kept for five years, unless you ask us to delete them sooner.</p>
+<h3>Recordings</h3>
+<p>Online sessions are recorded only occasionally and only with consent, given at the start of the session (by a parent for a child). Only Heidi receives a recording; she keeps it for one month, then deletes it.</p>
 <h3>Residents of Quebec (Law 25)</h3>
 <p>If you are located in Quebec, you have rights under Law 25 (Act respecting the protection of personal information in the private sector), including the right to access, correct, and request deletion of your personal information, and to know how it is used. Contact heidi@healwithmovement.com to exercise these rights.</p>
 <h3>Third-party processors</h3>
-<p>We use Cal.com (scheduling), Stripe (payments), Resend (transactional email), and Cloudflare (hosting, forms, Turnstile bot protection). Each has its own privacy policy.</p>
+<p>We use Cloudflare (website hosting), Neon (secure database and email sign-in codes), Cal.com (scheduling, booking emails and Cal Video for online sessions) and Stripe (card payments). Each has its own privacy policy.</p>
 <h3>Contact</h3>
 <p>Questions about this policy: <a href="mailto:heidi@healwithmovement.com">heidi@healwithmovement.com</a>.</p>
 `,
@@ -800,13 +789,13 @@ const terms = legalPage({
 <h3>Services</h3>
 <p>Heal with Movement provides Anat Baniel Method NeuroMovement lessons for children and adults, in person and virtually. Sessions are educational/somatic movement lessons, not medical treatment, see our <a href="/disclaimer.html">Medical Disclaimer</a>.</p>
 <h3>Bookings &amp; payment</h3>
-<p>Sessions are booked through our Cal.com scheduling system with payment processed by Stripe. Prices are listed at time of booking. See our <a href="/cancellation.html">Cancellation Policy</a> for rescheduling and cancellation terms.</p>
+<p>Sessions are booked through your account on this website, which uses Cal.com for scheduling. Virtual private lessons and group classes are paid by card through Stripe when you book; in-person lessons are invoiced after the session. Prices are listed on the Services page and at booking. See our <a href="/cancellation.html">Cancellation Policy</a> for rescheduling and cancellation terms.</p>
 <h3>Use of the site</h3>
 <p>You agree not to misuse the site, attempt to disrupt its operation, or submit false information through our forms.</p>
 <h3>Limitation of liability</h3>
 <p>To the fullest extent permitted by law, Heal with Movement and Heidi Rood are not liable for indirect, incidental, or consequential damages arising from use of the site or participation in sessions.</p>
 <h3>Governing law</h3>
-<p>{{GOVERNING_LAW_JURISDICTION}}</p>
+<p>These terms are governed by the laws of the State of Vermont for sessions held in Vermont, and by the laws of the Province of Quebec and the federal laws of Canada that apply there for sessions held in Quebec. For virtual sessions, the law of the place where you live applies: Vermont law if you live in the United States, and Quebec law if you live in Canada.</p>
 `,
 });
 
@@ -841,7 +830,7 @@ const disclaimer = legalPage({
 <p>The Anat Baniel Method® NeuroMovement® is not a substitute for professional medical advice or a medical exam. You should regularly consult a doctor in all matters relating to physical or mental health, particularly concerning any symptoms that may require diagnosis or medical attention.</p>
 <p>Heidi Rood and/or Heal with Movement make no warranties or guarantees concerning any particular outcome, result, or improvement from participation in functional synthesis and/or movement lessons.</p>
 <p>Heidi Rood and/or Heal with Movement are not responsible for any direct, indirect, consequential, special, or other damages, including but not limited to economic loss, injury, or illness, that may result from participation in functional synthesis and/or movement lessons.</p>
-<p>By booking a session or submitting an intake form, you confirm you have read and understood this disclaimer, and consent to treatment on that basis. You may withdraw consent at any time, at which point the session will be stopped.</p>
+<p>By booking a session or submitting an intake form, you confirm you have read and understood this disclaimer, and consent to taking part in lessons on that basis. You may withdraw consent at any time, at which point the lesson will be stopped.</p>
 `,
 });
 
@@ -968,7 +957,7 @@ const intake = page({
           <textarea id="diagnosis" name="diagnosis"></textarea>
         </div>
         <div class="field">
-          <label for="reason">What is your primary reason for seeking treatment today?</label>
+          <label for="reason">What is your main reason for booking lessons?</label>
           <textarea id="reason" name="reason" required></textarea>
         </div>
         <div class="field">
@@ -1020,11 +1009,11 @@ const intake = page({
         <div class="card" style="max-height:260px; overflow:auto; font-size:.9rem; margin-bottom:1.2em;">
           <p>The Anat Baniel Method® NeuroMovement® is not a substitute for professional medical advice or a medical exam. You should regularly consult a doctor in all matters relating to physical or mental health, particularly concerning any symptoms that may require diagnosis or medical attention.</p>
           <p>Heidi Rood and/or Heal with Movement make no warranties or guarantees concerning any particular outcome, result, or improvement from participation in functional synthesis and/or movement lessons, and are not responsible for any direct, indirect, consequential, special, or other damages that may result from participation.</p>
-          <p>By signing below, I confirm my consent to treatment for my child, understanding that I may withdraw consent at any time, at which point treatment will be stopped.</p>
-          <p><strong>Please note:</strong> Heal with Movement reserves the right to charge the full applicable treatment fee for missed or cancelled appointments if 24 hours' notice has not been received.</p>
+          <p>By signing below, I consent to my child taking part in lessons, understanding that I may withdraw consent at any time, at which point the lesson will be stopped.</p>
+          <p><strong>Please note:</strong> Heal with Movement reserves the right to charge the full applicable lesson fee for missed or cancelled appointments if 24 hours' notice has not been received.</p>
         </div>
         <div class="field">
-          <label><input type="checkbox" name="consent" required> I have read and understood the disclaimer above, and I consent to treatment for my child.</label>
+          <label><input type="checkbox" name="consent" required> I have read and understood the disclaimer above, and I consent to my child taking part in lessons.</label>
         </div>
         <div class="grid grid-2">
           <div class="field">

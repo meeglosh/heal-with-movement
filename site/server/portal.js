@@ -44,6 +44,14 @@ async function markApproved(db, booking, status) {
       [booking.child_id],
     );
 }
+// Heidi teaches in Vermont the first week of each month (days 1–7, Eastern)
+// and in Montreal the rest of the month.
+export function inPersonDay(service, day) {
+  const vermontWeek = Number(String(day).slice(8, 10)) <= 7;
+  if (service === "vermont") return vermontWeek;
+  if (service === "montreal") return !vermontWeek;
+  return true;
+}
 function parse(schema, value) {
   const result = schema.safeParse(value);
   if (!result.success)
@@ -370,6 +378,20 @@ export async function portal(
           throw new HttpError(400, "Choose a date range of up to two weeks.");
         let data = await cal.slots(eid, start, end, tz);
         if (flow.service === "virtual") data = groupDays(data, env);
+        // Days are keyed in the client's time zone; the location rule is Eastern.
+        data = Object.fromEntries(
+          Object.entries(data)
+            .map(([day, slots]) => [
+              day,
+              slots.filter((slot) =>
+                inPersonDay(
+                  flow.service,
+                  easternDate(new Date(slot.start || slot)),
+                ),
+              ),
+            ])
+            .filter(([, slots]) => slots.length),
+        );
         return json({
           slots: flow.child_id
             ? Object.fromEntries(
@@ -421,6 +443,13 @@ export async function portal(
           return json(
             { booking: publicBooking(existing) },
             existing.status === "creating" ? 202 : 200,
+          );
+        if (!inPersonDay(flow.service, easternDate(new Date(input.start))))
+          throw new HttpError(
+            400,
+            flow.service === "vermont"
+              ? "Vermont lessons are held the first week of each month."
+              : "Heidi is in Vermont the first week of each month. Please choose another date.",
           );
         if (virtual)
           await db.query(
@@ -532,6 +561,46 @@ export async function portal(
       credits: credit?.balance || 0,
       booking: result.booking ? publicBooking(result.booking) : null,
     });
+  }
+  // Heidi can waive a forfeited group class by returning its credit.
+  if (path === "/admin/credits" && request.method === "GET") {
+    if (!isStaff(user, env)) throw new HttpError(403, "Staff access required.");
+    const rows = await db.query(
+      "SELECT b.id,b.start_at,b.status,u.name AS client_name,u.email,c.name AS child_name FROM bookings b JOIN portal_users u ON u.id=b.user_id LEFT JOIN children c ON c.id=b.child_id WHERE b.uses_credit AND NOT EXISTS(SELECT 1 FROM credit_ledger l WHERE l.booking_id=b.id AND l.reason='restore') ORDER BY b.start_at DESC LIMIT 100",
+    );
+    return json({
+      bookings: rows.map((b) => ({
+        id: b.id,
+        start: b.start_at,
+        status: b.status,
+        clientName: b.client_name,
+        email: b.email,
+        childName: b.child_name,
+      })),
+    });
+  }
+  const restore = path.match(/^\/admin\/credits\/([^/]+)\/restore$/);
+  if (restore && request.method === "POST") {
+    if (!isStaff(user, env)) throw new HttpError(403, "Staff access required.");
+    parse(id, restore[1]);
+    const [booking] = await db.query(
+      "SELECT * FROM bookings WHERE id=$1 AND uses_credit",
+      [restore[1]],
+    );
+    if (!booking) throw new HttpError(404, "Booking not found.");
+    if (!(await restoreCredit(db, booking)))
+      throw new HttpError(409, "This credit has already been returned.");
+    await db.query(
+      "INSERT INTO audit_events(id,actor_id,action,child_id,subject_user_id) VALUES($1,$2,$3,$4,$5)",
+      [
+        crypto.randomUUID(),
+        user.id,
+        "credit.restored",
+        booking.child_id,
+        booking.user_id,
+      ],
+    );
+    return json({ ok: true });
   }
   if (path === "/admin/intakes" && request.method === "GET") {
     if (!isStaff(user, env)) throw new HttpError(403, "Staff access required.");
@@ -707,12 +776,17 @@ async function sendToCalendar(db, cal, pay, booking, attendee) {
   return saved;
 }
 
+// Returns a booking's class credit once; false when it was already returned.
+async function restoreCredit(db, booking) {
+  const rows = await db.query(
+    "WITH l AS (INSERT INTO credit_ledger(id,user_id,delta,reason,booking_id) VALUES($1,$2,1,'restore',$3) ON CONFLICT (booking_id) WHERE reason='restore' DO NOTHING RETURNING user_id) UPDATE credit_balances SET balance=balance+1 WHERE user_id IN (SELECT user_id FROM l) RETURNING balance",
+    [crypto.randomUUID(), booking.user_id, booking.id],
+  );
+  return rows.length > 0;
+}
+
 async function compensate(db, pay, booking) {
-  if (booking.uses_credit)
-    await db.query(
-      "WITH l AS (INSERT INTO credit_ledger(id,user_id,delta,reason,booking_id) VALUES($1,$2,1,'restore',$3) ON CONFLICT (booking_id) WHERE reason='restore' DO NOTHING RETURNING user_id) UPDATE credit_balances SET balance=balance+1 WHERE user_id IN (SELECT user_id FROM l)",
-      [crypto.randomUUID(), booking.user_id, booking.id],
-    );
+  if (booking.uses_credit) await restoreCredit(db, booking);
   if (booking.payment_id) await refundPayment(db, pay, booking.payment_id);
 }
 

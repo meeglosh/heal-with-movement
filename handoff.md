@@ -29,6 +29,15 @@ A real payment, cancellation and refund were tested end to end on October 6, 202
 - **Cancellation policy.** The 24-hour policy is published on the services,
   FAQ and cancellation pages.
 
+- **Schedules.** In-person lessons run Monday–Friday 10 a.m.–5 p.m. Eastern:
+  Vermont on days 1–7 of each month, Montreal on the other days (filtered by
+  the site). Virtual private lessons run 10 a.m.–7 p.m. (Cal.com schedule
+  `2469485`).
+- **Child approval.** Only a child's first private booking needs Heidi's
+  approval; later ones use the "(returning)" event types.
+- **Staff tools.** Heidi signs in and sees "Review intake" and "Return class
+  credits" on her account page.
+
 ## Environments and secrets
 
 No secret values are in git. They live in these places:
@@ -65,17 +74,6 @@ Cloudflare secrets take effect at the next deploy.
 
 ## Open items
 
-Questions for Heidi are in a separate shared doc, "Questions for Heidi — Heal
-with Movement launch".
-
-1. **Child group classes.** Is 12+ final, and must a parent take part? The site
-   does not check age for group classes yet.
-2. **Recording consent.** Nothing has been built yet.
-3. **In-person hours and addresses.** Montreal and Vermont still use the
-   placeholder weekday 10 a.m.–5 p.m. schedule (`2416901`), and Vermont is not
-   hidden from booking.
-4. **Legal pages.** These still need an insurance answer, the governing-law
-   jurisdiction, a "Last updated" date and removal of the draft banner. The
-   disclaimer's "consent to treatment" wording is in question.
-5. **Credit waivers.** There is no staff tool to return a forfeited credit.
-   Late cancellations by Heidi must be refunded manually in Stripe.
+- The newsletter is on hold (Heidi, October 7, 2026).
+- Reset the development database password when convenient, then update
+  `site/.dev.vars` and `site/.env.development`.

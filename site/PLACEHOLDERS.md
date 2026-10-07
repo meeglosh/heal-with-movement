@@ -1,32 +1,17 @@
-# Placeholders to resolve before launch
+# Placeholders
 
-Every one of these must be filled in with real values from Heidi before the
-site goes live. Search the codebase for the literal token to find every
-occurrence.
+As of October 7, 2026 the live site has no `{{TOKEN}}` placeholders. Prices,
+schedules, the cancellation policy, insurance wording, governing law and the
+legal pages' "Last updated" date come from Heidi's answers
+(see `docs/launch-decisions.md`). Heidi approved the legal pages without a
+lawyer's review. The contact page links to email instead of a form; there is
+no newsletter form and no analytics script.
 
-## Pricing & scheduling (unknown at build time)
+Check before each release:
 
-| Token | Where it appears | Needed |
-|---|---|---|
-| `{{PRICE}}` | services.html (x3), JSON-LD `priceRange` | Session price for Vermont private, Montreal private, virtual group; virtual private price is shown as “Price to be confirmed” |
-
-## Contact & legal
-
-| Token | Where it appears | Needed |
-|---|---|---|
-| `{{PHONE}}` | contact.html | Public phone number, if any |
-| `{{INSURANCE_INFO}}` | faq.html | Whether sessions are covered by insurance / HSA-eligible |
-| `{{GOVERNING_LAW_JURISDICTION}}` | terms.html | Which jurisdiction's law governs the Terms (VT, QC, or both) |
-| `{{LEGAL_DATE}}` | privacy.html, terms.html, cancellation.html, disclaimer.html | "Last updated" date once reviewed |
-
-## Integrations
-
-| Token | Where it appears | Needed |
-|---|---|---|
-| Booking backend | Pages runtime secrets | Neon Auth, encryption key, Cal.com API key and event IDs; see DEPLOY.md |
-| Plausible/Cloudflare Web Analytics snippet | every page `<head>` (via `build.mjs`) | Currently a placeholder Plausible script tag (`data-placeholder="true"`) pointing at `healwithmovement.com` — swap for the real analytics snippet or remove |
-| Newsletter form | footer, every page | Currently a non-functional placeholder (`onsubmit="return false;"`) — wire to Mailchimp/Buttondown/ConvertKit etc. |
-| Contact form | contact.html | Currently a non-functional placeholder — wire to a Pages Function or a form service |
+```sh
+grep -o "{{[A-Z_]*}}" public/*.html server/*.js
+```
 
 ## Content
 

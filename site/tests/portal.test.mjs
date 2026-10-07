@@ -7,6 +7,7 @@ import {
   calWebhook,
   stripeWebhook,
   publicGroupTimes,
+  inPersonDay,
 } from "../server/portal.js";
 import { PRICES, verifyStripeSignature } from "../server/stripe.js";
 import {
@@ -15,11 +16,24 @@ import {
   verifySignature,
 } from "../server/crypto.js";
 import { eventId, validateEvent } from "../server/cal.js";
+// Vermont lessons run the first week of each month (days 1–7, Eastern).
+function vermontStart(minDays = 1) {
+  const d = new Date(Date.now() + minDays * 86400000);
+  d.setUTCHours(16, 0, 0, 0);
+  const day = (x) =>
+    Number(
+      new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", day: "2-digit" }).format(x),
+    );
+  while (day(d) > 7) d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString();
+}
 const env = {
   APP_ORIGIN: "https://test.invalid",
   INTAKE_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
   CAL_VERMONT_EVENT_ID: "1",
   CAL_VERMONT_CHILD_EVENT_ID: "2",
+  CAL_MONTREAL_EVENT_ID: "4",
+  CAL_MONTREAL_CHILD_EVENT_ID: "5",
   CAL_VIRTUAL_EVENT_ID: "100",
   CAL_VIRTUAL_CHILD_EVENT_ID: "100",
   CAL_VIRTUAL_PRIVATE_EVENT_ID: "101",
@@ -199,7 +213,7 @@ test("child intake only exists inside owned first-child booking and persists acr
   const next = await data("/flows", { service: "vermont", childId: child.id });
   assert.equal(next.needsIntake, false);
   const input = {
-    start: new Date(Date.now() + 86400000).toISOString(),
+    start: vermontStart(),
     timeZone: "America/New_York",
     name: "Parent",
   };
@@ -223,7 +237,7 @@ test("adult intake is required once, private, encrypted, and separate from child
   const flow = await data("/flows", { service: "vermont", childId: null });
   assert.equal(flow.needsIntake, true);
   const booking = {
-    start: new Date(Date.now() + 86400000).toISOString(),
+    start: vermontStart(),
     timeZone: "UTC",
     name: "Parent",
   };
@@ -347,7 +361,7 @@ test("uncertain Cal creation is retained and never retried", async () => {
     },
   };
   const input = {
-    start: new Date(Date.now() + 86400000).toISOString(),
+    start: vermontStart(),
     timeZone: "UTC",
     name: "Parent",
   };
@@ -735,7 +749,7 @@ test("adult and child reviews recur after six calendar months and cannot bypass 
     );
     await assert.rejects(
       request(`/flows/${flow.id}/book`, {
-        start: new Date(Date.now() + 86400000).toISOString(),
+        start: vermontStart(),
         timeZone: "UTC",
         name: "Parent",
       }),
@@ -858,7 +872,7 @@ test("turning 18 overrides a current child intake and requires an independent ad
   );
   await assert.rejects(
     request(`/flows/${flow.id}/book`, {
-      start: new Date(Date.now() + 86400000).toISOString(),
+      start: vermontStart(),
       timeZone: "UTC",
       name: "Parent",
     }),
@@ -909,8 +923,9 @@ test("parents cannot reserve child appointments on or after a future eighteenth 
     child.child_id,
     dates.birth,
   ]);
+  // Virtual private lessons have no location week, so any date applies.
   const flow = await data("/flows", {
-    service: "vermont",
+    service: "virtual_private",
     childId: child.child_id,
   });
   const start = dates.birthday + "T16:00:00Z";
@@ -1231,8 +1246,7 @@ test("only a child's first private booking needs Heidi's approval", async () => 
     },
     parent,
   );
-  const input = { ...later(4), name: parent.name };
-  delete input.agreed;
+  const input = { start: vermontStart(4), timeZone: "UTC", name: parent.name };
   const first = await data(`/flows/${flow.id}/book`, input, parent);
   assert.equal(observedBookingEventId, 2);
   assert.equal(first.booking.status, "pending");
@@ -1274,4 +1288,92 @@ test("only a child's first private booking needs Heidi's approval", async () => 
   assert.equal(observedBookingEventId, 2);
   // An approval event must still require confirmation.
   assert.throws(() => validateEvent({ confirmationPolicy: { disabled: true } }, true));
+});
+
+test("Vermont is offered the first week of each month and Montreal the rest", async () => {
+  assert.equal(inPersonDay("vermont", "2026-11-07"), true);
+  assert.equal(inPersonDay("vermont", "2026-11-08"), false);
+  assert.equal(inPersonDay("montreal", "2026-11-02"), false);
+  assert.equal(inPersonDay("montreal", "2026-11-09"), true);
+  assert.equal(inPersonDay("virtual_private", "2026-11-02"), true);
+  const who = {
+    id: "location-client",
+    email: "location@example.invalid",
+    name: "Location Client",
+    emailVerified: true,
+  };
+  const slots = {
+    // 10 p.m. on November 7 in Los Angeles is already November 8 in the East.
+    "2026-11-07": [
+      { start: "2026-11-07T16:00:00.000Z" },
+      { start: "2026-11-08T06:00:00.000Z" },
+    ],
+    "2026-11-09": [{ start: "2026-11-09T16:00:00.000Z" }],
+  };
+  const range = new URLSearchParams({
+    start: new Date().toISOString(),
+    end: new Date(Date.now() + 7 * 86400000).toISOString(),
+    timeZone: "America/Los_Angeles",
+  });
+  const shown = {};
+  for (const service of ["vermont", "montreal"]) {
+    const flow = await data("/flows", { service, childId: null }, who);
+    await db.query(
+      "INSERT INTO adult_intakes(user_id,encrypted_payload) VALUES($1,'{}') ON CONFLICT DO NOTHING",
+      [who.id],
+    );
+    shown[service] = (
+      await (
+        await request(`/flows/${flow.id}/slots?${range}`, undefined, who, {
+          cal: { ...cal, slots: async () => slots },
+        })
+      ).json()
+    ).slots;
+  }
+  assert.deepEqual(shown.vermont, {
+    "2026-11-07": [{ start: "2026-11-07T16:00:00.000Z" }],
+  });
+  assert.deepEqual(shown.montreal, {
+    "2026-11-07": [{ start: "2026-11-08T06:00:00.000Z" }],
+    "2026-11-09": [{ start: "2026-11-09T16:00:00.000Z" }],
+  });
+});
+
+
+test("Heidi can return a forfeited class credit once; clients cannot", async () => {
+  const { who } = await groupUser("late-canceller");
+  const { checkoutUrl } = await data("/credits/checkout", { flowId: null }, who);
+  await data("/checkout/complete", { sessionId: markPaid(checkoutUrl) }, who);
+  const flow = await data("/flows", { service: "virtual", childId: null }, who);
+  const { booking } = await data(`/flows/${flow.id}/book`, later(0.5), who);
+  assert.equal((await data("/me", undefined, who)).credits, 5);
+  const staff = {
+    id: "staff",
+    email: "staff@example.invalid",
+    name: "Heidi",
+    emailVerified: true,
+  };
+  await assert.rejects(
+    request("/admin/credits", undefined, who),
+    (e) => e.status === 403,
+  );
+  await assert.rejects(
+    request(`/admin/credits/${booking.id}/restore`, {}, who),
+    (e) => e.status === 403,
+  );
+  const listed = await data("/admin/credits", undefined, staff);
+  assert.ok(listed.bookings.some((b) => b.id === booking.id && b.email === who.email));
+  await data(`/admin/credits/${booking.id}/restore`, {}, staff);
+  assert.equal((await data("/me", undefined, who)).credits, 6);
+  await assert.rejects(
+    request(`/admin/credits/${booking.id}/restore`, {}, staff),
+    (e) => e.status === 409,
+  );
+  assert.equal((await data("/me", undefined, who)).credits, 6);
+  assert.ok(!(await data("/admin/credits", undefined, staff)).bookings.some((b) => b.id === booking.id));
+  const [audit] = await db.query(
+    "SELECT * FROM audit_events WHERE action='credit.restored' AND subject_user_id=$1",
+    [who.id],
+  );
+  assert.equal(audit.actor_id, "staff");
 });
