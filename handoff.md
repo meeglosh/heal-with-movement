@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated October 6, 2026. Start here when picking the project back up.
+Last updated October 7, 2026. Start here when picking the project back up.
 Heidi's decisions live in [docs/launch-decisions.md](docs/launch-decisions.md);
 deployment and configuration details live in [site/DEPLOY.md](site/DEPLOY.md).
 
@@ -28,7 +28,6 @@ A real payment, cancellation and refund were tested end to end on October 6, 202
   logs as `disclaimer.accepted` in `audit_events`.
 - **Cancellation policy.** The 24-hour policy is published on the services,
   FAQ and cancellation pages.
-
 - **Schedules.** In-person lessons run Monday–Friday 10 a.m.–5 p.m. Eastern:
   Vermont on days 1–7 of each month, Montreal on the other days (filtered by
   the site). Virtual private lessons run 10 a.m.–7 p.m. (Cal.com schedule
@@ -37,6 +36,10 @@ A real payment, cancellation and refund were tested end to end on October 6, 202
   approval; later ones use the "(returning)" event types.
 - **Staff tools.** Heidi signs in and sees "Review intake" and "Return class
   credits" on her account page.
+- **Content.** The site has no placeholders. The legal pages are dated October
+  7, 2026; Heidi approved them without a lawyer's review. Run
+  `grep -o "{{[A-Z_]*}}" site/public/*.html` before each release to keep it
+  that way.
 
 ## Environments and secrets
 
@@ -51,9 +54,9 @@ No secret values are in git. They live in these places:
 
 The Neon project has two branches:
 
-- `production`: migrations 001–007 are applied.
+- `production`: migrations 001–008 are applied.
 - `dev-client-booking`: created October 6, 2026 with no expiry; migrations
-  001–007 are applied.
+  001–008 are applied.
 
 ## Common tasks
 
@@ -74,6 +77,10 @@ Cloudflare secrets take effect at the next deploy.
 
 ## Open items
 
+Heidi has answered every launch question; there are no blocking items.
+
 - The newsletter is on hold (Heidi, October 7, 2026).
+- First week in Vermont is taken to be days 1–7 of each month. Confirm with
+  Heidi if she means the first full Monday–Friday week instead.
 - Reset the development database password when convenient, then update
   `site/.dev.vars` and `site/.env.development`.
