@@ -56,7 +56,7 @@ The Neon project has two branches:
 
 - `production`: migrations 001–008 are applied.
 - `dev-client-booking`: created October 6, 2026 with no expiry; migrations
-  001–008 are applied.
+  001–008 are applied. Its `neondb_owner` password was reset October 9, 2026.
 
 ## Common tasks
 
@@ -82,5 +82,3 @@ Heidi has answered every launch question; there are no blocking items.
 - The newsletter is on hold (Heidi, October 7, 2026).
 - First week in Vermont is taken to be days 1–7 of each month. Confirm with
   Heidi if she means the first full Monday–Friday week instead.
-- Reset the development database password when convenient, then update
-  `site/.dev.vars` and `site/.env.development`.
