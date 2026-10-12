@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated October 7, 2026. Start here when picking the project back up.
+Last updated October 12, 2026. Start here when picking the project back up.
 Heidi's decisions live in [docs/launch-decisions.md](docs/launch-decisions.md);
 deployment and configuration details live in [site/DEPLOY.md](site/DEPLOY.md).
 
@@ -35,7 +35,12 @@ A real payment, cancellation and refund were tested end to end on October 6, 202
 - **Child approval.** Only a child's first private booking needs Heidi's
   approval; later ones use the "(returning)" event types.
 - **Staff tools.** Heidi signs in and sees "Review intake" and "Return class
-  credits" on her account page.
+  credits" on her account page. "Review intake" lists up to 100 completed
+  intakes, newest first, each with a "Next session", "Last session" or "No
+  sessions booked" line (added October 12, 2026; the query is in
+  `/admin/intakes` in `site/server/portal.js`). Opening a record shows every
+  answer and is logged in `audit_events`. Virtual-only clients have no intake,
+  so they are not listed.
 - **Content.** The site has no placeholders. The legal pages are dated October
   7, 2026; Heidi approved them without a lawyer's review. Run
   `grep -o "{{[A-Z_]*}}" site/public/*.html` before each release to keep it
@@ -79,6 +84,13 @@ Cloudflare secrets take effect at the next deploy.
 
 Heidi has answered every launch question; there are no blocking items.
 
+- The session line on the intake list has run on both Neon branches, but only
+  the adult case has returned a date (on `dev-client-booking`). The child case
+  and the "Next session" case are untested against real rows. Ask Heidi to check
+  the list after her first in-person booking.
+- Deploying needs wrangler logged in to the GAPCO LLC Cloudflare account
+  (`npx wrangler login`); a login to another account fails with
+  "Authentication error [code: 10000]".
 - The newsletter is on hold (Heidi, October 7, 2026).
 - First week in Vermont is taken to be days 1–7 of each month. Confirm with
   Heidi if she means the first full Monday–Friday week instead.
