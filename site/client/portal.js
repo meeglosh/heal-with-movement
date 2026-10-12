@@ -566,7 +566,7 @@ async function staffCredits() {
 async function staffList() {
   const data = await api("/api/portal/admin/intakes");
   render(
-    `${toolbar()}<h2>Intake records.</h2><div class="portal-options">${data.intakes.map((x) => `<button class="portal-choice" data-intake="${escape(x.id)}" data-kind="${x.kind}"><strong>${escape(x.name)}</strong><small>${x.kind === "adult" ? "Adult" : `Child · ${escape(x.guardian_name)}`}</small></button>`).join("") || "<p>No intake submissions yet.</p>"}</div>`,
+    `${toolbar()}<h2>Intake records.</h2><div class="portal-options">${data.intakes.map((x) => `<button class="portal-choice" data-intake="${escape(x.id)}" data-kind="${x.kind}"><strong>${escape(x.name)}</strong><small>${x.kind === "adult" ? "Adult" : `Child · ${escape(x.guardian_name)}`}</small><small>${x.next_booking ? `Next session: ${escape(new Date(x.next_booking).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))}` : x.last_booking ? `Last session: ${escape(new Date(x.last_booking).toLocaleDateString(undefined, { dateStyle: "medium" }))}` : "No sessions booked"}</small></button>`).join("") || "<p>No intake submissions yet.</p>"}</div>`,
   );
   wireToolbar();
   screen.querySelectorAll("[data-intake]").forEach((b) =>

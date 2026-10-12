@@ -606,7 +606,7 @@ export async function portal(
     if (!isStaff(user, env)) throw new HttpError(403, "Staff access required.");
     return json({
       intakes: await db.query(
-        "SELECT c.id::text,c.name,i.completed_at,u.name AS guardian_name, 'child' AS kind FROM intakes i JOIN children c ON c.id=i.child_id JOIN portal_users u ON u.id=i.guardian_id UNION ALL SELECT a.user_id,u.name,a.completed_at,NULL AS guardian_name,'adult' AS kind FROM adult_intakes a JOIN portal_users u ON u.id=a.user_id ORDER BY completed_at DESC LIMIT 100",
+        "SELECT c.id::text,c.name,i.completed_at,u.name AS guardian_name, 'child' AS kind,(SELECT min(b.start_at) FROM bookings b WHERE b.child_id=c.id AND b.status IN ('accepted','pending') AND b.start_at>=now()) AS next_booking,(SELECT max(b.start_at) FROM bookings b WHERE b.child_id=c.id AND b.status='accepted' AND b.start_at<now()) AS last_booking FROM intakes i JOIN children c ON c.id=i.child_id JOIN portal_users u ON u.id=i.guardian_id UNION ALL SELECT a.user_id,u.name,a.completed_at,NULL AS guardian_name,'adult' AS kind,(SELECT min(b.start_at) FROM bookings b WHERE b.user_id=a.user_id AND b.child_id IS NULL AND b.status IN ('accepted','pending') AND b.start_at>=now()) AS next_booking,(SELECT max(b.start_at) FROM bookings b WHERE b.user_id=a.user_id AND b.child_id IS NULL AND b.status='accepted' AND b.start_at<now()) AS last_booking FROM adult_intakes a JOIN portal_users u ON u.id=a.user_id ORDER BY completed_at DESC LIMIT 100",
       ),
     });
   }
